@@ -7,6 +7,7 @@ import { ScanController } from '@/core/scanner'
 import { ExtensionStorage } from '@/core/storage'
 import type { CapturedJob, ReviewJob } from '@/core/types'
 import { DomBossAdapter } from '@/page/bossAdapter'
+import { copyAndFocusBossInput } from '@/page/sender'
 
 export const useReviewStore = defineStore('review', () => {
   const storage = new ExtensionStorage()
@@ -39,6 +40,18 @@ export const useReviewStore = defineStore('review', () => {
 
   function markSelectedSent(): void {
     updateSelected({ status: 'sent', statusMessage: '已发送' })
+  }
+
+  async function copySelectedGreeting(): Promise<void> {
+    const job = selectedJob.value
+    const greeting = job?.greeting?.greeting
+    if (!job || !greeting) return
+
+    const result = await copyAndFocusBossInput(greeting)
+    updateSelected({
+      status: result.ok ? 'reviewing' : 'failed',
+      statusMessage: result.message,
+    })
   }
 
   async function scanCurrentPage(): Promise<void> {
@@ -104,6 +117,7 @@ export const useReviewStore = defineStore('review', () => {
     selectJob,
     skipSelected,
     markSelectedSent,
+    copySelectedGreeting,
     scanCurrentPage,
     scanPages,
     updateSelected,

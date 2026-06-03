@@ -47,7 +47,13 @@
               <button class="brs-icon-button" type="button" aria-label="重写招呼语" title="重写招呼语">
                 <RefreshCcwIcon aria-hidden="true" :size="15" />
               </button>
-              <button class="brs-icon-button" type="button" aria-label="复制招呼语" title="复制招呼语">
+              <button
+                class="brs-icon-button"
+                type="button"
+                aria-label="复制招呼语"
+                title="复制招呼语"
+                @click="store.copySelectedGreeting"
+              >
                 <CopyIcon aria-hidden="true" :size="15" />
               </button>
             </div>
