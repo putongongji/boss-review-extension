@@ -1,148 +1,148 @@
-# Boss Review Sender Chrome Extension Design
+# Boss 人审发送 Chrome 扩展设计方案
 
-## Goal
+## 目标
 
-Build a Chrome extension for Boss Zhipin that helps the user scan job listings, collect job details across pages, generate JD-specific greeting messages from the user's resume, and send only after explicit human review.
+做一个 Boss 直聘 Chrome 扩展，帮助用户扫描职位列表、跨页收集岗位详情、根据 JD 和用户简历生成定制打招呼语，并且只在用户明确审核确认后发送。
 
-The product should reduce repetitive job-search work while preserving user control. It must not run unattended bulk messaging.
+这个产品的目标是减少重复求职操作，同时保留用户控制权。它不能做无人值守的批量消息发送。
 
-## Source Reference
+## 参考来源
 
-The design borrows the useful architecture patterns from `Ocyss/boss-helper`:
+本方案借鉴 `Ocyss/boss-helper` 里有价值的架构思路：
 
-- WXT browser extension structure.
-- Main-world page injection for access to Boss page runtime objects.
-- Job pipeline for filtering, enrichment, status, logs, and statistics.
-- Local duplicate tracking by company and recruiter.
-- Rate-limit and daily-limit awareness.
+- 使用 WXT 构建浏览器扩展。
+- 注入 main-world 脚本，以访问 Boss 页面运行时对象。
+- 用岗位 pipeline 管理过滤、补全、状态、日志和统计。
+- 在本地按公司和招聘者记录去重。
+- 识别速率限制和每日上限。
 
-This project should not copy its high-risk defaults:
+本项目不复制它的高风险默认行为：
 
-- No unattended batch sending.
-- No automatic replies.
-- No multi-account cookie switching.
-- No bypass behavior for verification, captcha, login anomalies, or platform limits.
+- 不做无人值守批量发送。
+- 不做自动回复。
+- 不做多账号 cookie 切换。
+- 不绕过验证码、登录异常、平台校验或平台限制。
 
-## User Experience
+## 用户体验
 
-The extension appears as a right-side assistant panel on Boss job-list pages. The interface should feel like a quiet productivity tool: dense enough for repeated use, but simple and polished.
+扩展以右侧助手面板的形式出现在 Boss 职位列表页。界面要像一个安静、高级的效率工具：信息密度足够支持反复使用，但视觉上简洁、克制、清晰。
 
-Primary user flow:
+主流程：
 
-1. User opens a Boss job-list page.
-2. User clicks `Scan Current Page` or configures page/job limits and clicks `Scan Pages`.
-3. Extension collects jobs from the current and subsequent pages.
-4. Extension enriches each job with details, filters obvious duplicates or excluded roles, and generates a match score.
-5. Extension generates one greeting draft for each reviewable job.
-6. User reviews each job and chooses `Send`, `Rewrite`, `Copy`, `Skip`, or `Blacklist`.
-7. Only a user click on `Send` triggers a message action.
-8. Extension logs all outcomes locally.
+1. 用户打开 Boss 职位列表页。
+2. 用户点击 `扫描当前页`，或设置页数/岗位数上限后点击 `连续扫描`。
+3. 扩展从当前页和后续页面收集岗位。
+4. 扩展补全岗位详情，过滤明显重复或不符合条件的岗位，并生成匹配分。
+5. 扩展为每个可审核岗位生成一条打招呼语草稿。
+6. 用户逐条审核，并选择 `发送`、`重写`、`复制`、`跳过` 或 `拉黑`。
+7. 只有用户点击 `发送` 后，扩展才触发消息动作。
+8. 扩展在本地记录所有结果。
 
-## Visual Direction
+## 视觉方向
 
-Pattern: compact review dashboard inside a browser extension side panel.
+界面模式：浏览器扩展右侧面板里的紧凑审核工作台。
 
-Style:
+风格要求：
 
-- Minimal, premium, professional.
-- White or near-white surface with subtle borders.
-- Dark neutral text.
-- Teal accent for match/status.
-- Orange accent reserved for primary send action.
-- 8px or smaller border radius.
-- No decorative gradients, floating cards, marketing hero sections, or nested cards.
-- Icon buttons for repeated actions such as refresh, pause, copy, rewrite, blacklist, and send.
-- Clear focus states and semantic buttons.
+- 简洁、高级、专业。
+- 白色或近白色底面，使用轻边框。
+- 深色中性文字。
+- 青绿色用于匹配分和状态。
+- 橙色只用于主要发送动作。
+- 圆角不超过 8px。
+- 不使用装饰性渐变、悬浮大卡片、营销式首屏或卡片套卡片。
+- 高频动作使用图标按钮，例如刷新、暂停、复制、重写、拉黑、发送。
+- 使用语义化按钮，并提供清晰的键盘焦点状态。
 
-Panel structure:
+面板结构：
 
 ```text
-Boss Review Sender
-[Scan Current] [Scan Pages] [Pause]
-5 pages · 100 jobs · human reviewed
+Boss 人审助手
+[扫描当前页] [连续扫描] [暂停]
+5 页 · 100 岗 · 人审发送
 
-Stats
-Scanned 42 · High 9 · Review 12 · Sent 3 · Skipped 8
+统计
+已抓取 42 · 高分 9 · 待审 12 · 已发 3 · 跳过 8
 
-Queue
-Product Manager · Company A · 86
-AI Product · Company B · 79
+队列
+产品经理 · A 公司 · 86
+AI 产品 · B 公司 · 79
 ...
 
-Current Job
-JD summary
-Resume evidence
-Greeting draft
-[Send] [Rewrite] [Copy] [Skip] [Blacklist]
+当前岗位
+JD 摘要
+简历匹配证据
+打招呼语草稿
+[发送] [重写] [复制] [跳过] [拉黑]
 ```
 
-Target panel width: 420-520px. It should remain usable on narrower browser windows by collapsing metadata and preserving the review actions.
+目标面板宽度为 420-520px。浏览器窗口变窄时，应折叠次要元数据，但保留核心审核动作。
 
-## Scope
+## 范围
 
-MVP includes:
+MVP 包含：
 
-- WXT + Vue + TypeScript Chrome extension.
-- Boss job-list page detection and panel mounting.
-- Current-page job capture.
-- Multi-page job capture with configurable page and job limits.
-- Job detail enrichment.
-- Local resume source configuration.
-- LLM-based match scoring and greeting generation.
-- Human review queue.
-- Manual send, rewrite, copy, skip, and blacklist actions.
-- Same-company and same-recruiter duplicate prevention.
-- Local logs and daily review/send counters.
-- Pause and stop controls.
+- WXT + Vue + TypeScript Chrome 扩展。
+- Boss 职位列表页识别和右侧面板挂载。
+- 当前页岗位抓取。
+- 支持配置页数和岗位数上限的多页抓取。
+- 岗位详情补全。
+- 本地简历素材配置。
+- 基于 LLM 的岗位匹配评分和打招呼语生成。
+- 人工审核队列。
+- 手动发送、重写、复制、跳过、拉黑。
+- 同公司和同招聘者去重。
+- 本地日志和每日审核/发送计数。
+- 暂停和停止控制。
 
-MVP excludes:
+MVP 不包含：
 
-- Unattended automatic sending.
-- Multi-account cookie storage or switching.
-- Automatic chat replies.
-- Map distance filtering.
-- Commercial key management.
-- Circumventing platform verification, captcha, login, or rate limits.
+- 无人值守自动发送。
+- 多账号 cookie 存储或切换。
+- 自动回复聊天。
+- 地图距离筛选。
+- 商业化密钥系统。
+- 绕过平台验证码、登录、校验或速率限制。
 
-## Page Integration
+## 页面集成
 
-The extension has three runtime layers:
+扩展包含三层运行时：
 
 1. `content script`
-   - Matches `*://zhipin.com/*` and `*://*.zhipin.com/*`.
-   - Loads CSS.
-   - Injects the main-world script.
-   - Bridges messages between page runtime and extension background.
+   - 匹配 `*://zhipin.com/*` 和 `*://*.zhipin.com/*`。
+   - 加载 CSS。
+   - 注入 main-world 脚本。
+   - 在页面运行时和扩展 background 之间转发消息。
 
 2. `main-world script`
-   - Runs in the page context.
-   - Mounts the Vue panel into the Boss page.
-   - Reads page runtime data when available.
-   - Observes route changes and reinitializes adapters.
+   - 在页面上下文中运行。
+   - 将 Vue 面板挂载到 Boss 页面。
+   - 在可用时读取 Boss 页面运行时数据。
+   - 监听路由变化，并重新初始化页面适配器。
 
 3. `background`
-   - Stores settings, resume material, logs, dedupe keys, and local counters.
-   - Calls LLM providers if the selected provider requires extension-side execution.
-   - Keeps content scripts free of persistent secrets where practical.
+   - 保存设置、简历素材、日志、去重 key 和本地计数。
+   - 当选定的 LLM provider 需要扩展侧调用时，负责调用模型。
+   - 尽量避免在 content script 中长期保存敏感信息。
 
-## Job Capture
+## 岗位抓取
 
-The job adapter should prefer page runtime data, then fall back to DOM extraction.
+岗位适配器优先读取页面运行时数据，其次使用 DOM 兜底。
 
-Preferred path:
+优先路径：
 
-- Locate Boss page Vue root or job-list component.
-- Read `jobList`, `jobDetail`, and page click handlers when available.
-- Use page functions to select a job and wait for matching detail data.
+- 定位 Boss 页面 Vue 根组件或职位列表组件。
+- 在可用时读取 `jobList`、`jobDetail` 和页面点击处理函数。
+- 使用页面函数选中岗位，并等待对应的详情数据出现。
 
-Fallback path:
+兜底路径：
 
-- Read job cards from DOM.
-- Extract visible fields and stable ids from links or attributes.
-- Click a job card when details are needed.
-- Wait for detail panel content to change before extracting JD text.
+- 从 DOM 读取岗位卡片。
+- 从链接、属性或可见文本中提取字段和稳定 id。
+- 需要详情时点击岗位卡片。
+- 等待详情面板内容变化后，再提取 JD 文本。
 
-The adapter returns normalized records:
+适配器返回标准化岗位记录：
 
 ```ts
 interface CapturedJob {
@@ -167,56 +167,56 @@ interface CapturedJob {
 }
 ```
 
-## Multi-Page Scanning
+## 多页扫描
 
-Scanning is user-initiated and bounded.
+扫描必须由用户主动启动，并且必须有边界。
 
-Default limits:
+默认限制：
 
-- Max pages: 5.
-- Max jobs: 100.
-- Page interval: randomized delay.
-- Detail interval: randomized delay.
+- 最大页数：5 页。
+- 最大岗位数：100 个。
+- 翻页间隔：随机延迟。
+- 详情补全间隔：随机延迟。
 
-Flow:
+流程：
 
-1. Capture current page jobs.
-2. Enrich jobs that are not already captured.
-3. Add jobs to the review queue.
-4. If page/job limits are reached, stop.
-5. Find next-page action from page runtime or DOM.
-6. Click next page.
-7. Wait until the first visible job id changes or the list content changes.
-8. Repeat.
+1. 抓取当前页岗位。
+2. 对尚未抓取过的岗位补全详情。
+3. 将岗位加入审核队列。
+4. 如果达到页数或岗位数上限，则停止。
+5. 从页面运行时或 DOM 中找到下一页动作。
+6. 点击下一页。
+7. 等待首个可见岗位 id 变化，或等待列表内容变化。
+8. 重复以上流程。
 
-Stop conditions:
+停止条件：
 
-- User pauses or stops.
-- Page limit reached.
-- Job limit reached.
-- No next page.
-- Login anomaly.
-- Captcha or verification prompt.
-- Rate-limit warning.
-- Repeated extraction failure.
+- 用户暂停或停止。
+- 达到页数上限。
+- 达到岗位数上限。
+- 没有下一页。
+- 登录状态异常。
+- 出现验证码或校验提示。
+- 出现速率限制提示。
+- 连续抓取失败。
 
-The scanner never sends messages.
+扫描器永远不发送消息。
 
-## Processing Pipeline
+## 处理 Pipeline
 
-Each job moves through a deterministic pipeline:
+每个岗位进入确定性的处理流程：
 
-1. Normalize fields.
-2. Check local sent/skipped history.
-3. Check same company and same recruiter dedupe.
-4. Apply blacklist.
-5. Apply simple keyword filters.
-6. Enrich detail if needed.
-7. Score JD against resume.
-8. Generate greeting draft.
-9. Enter review queue.
+1. 字段标准化。
+2. 检查本地已发送/已跳过记录。
+3. 检查同公司和同招聘者去重。
+4. 应用黑名单。
+5. 应用简单关键词过滤。
+6. 按需补全岗位详情。
+7. 根据简历给 JD 打分。
+8. 生成打招呼语草稿。
+9. 进入审核队列。
 
-Each job status is one of:
+岗位状态：
 
 ```ts
 type JobStatus =
@@ -231,31 +231,31 @@ type JobStatus =
   | 'failed'
 ```
 
-## Resume And Greeting Generation
+## 简历和打招呼语生成
 
-Default resume material path for local development:
+本地开发默认简历素材路径：
 
 `/Users/sanjin/无用/find_job/简历.md`
 
-The extension UI should also allow the user to paste or update resume material inside extension storage, because Chrome extensions cannot rely on direct filesystem reads in production.
+扩展 UI 也应该允许用户在扩展存储中粘贴或更新简历素材。原因是 Chrome 扩展在生产环境中不能依赖直接读取本地文件系统。
 
-Greeting formula:
+打招呼语公式：
 
 ```text
-short greeting + preview hook + matching evidence + low-cost next step
+简短问候 + 预览钩子 + 匹配证据 + 低成本下一步
 ```
 
-Generation constraints:
+生成约束：
 
-- Chinese by default.
-- 80-120 Chinese characters by default.
-- Never invent experience, numbers, companies, tools, or titles.
-- Use only resume material and JD content as evidence.
-- Prefer concrete proof over generic enthusiasm.
-- Show the selected resume evidence next to the draft.
-- Show a warning if evidence is weak or generated text may be too generic.
+- 默认使用中文。
+- 默认控制在 80-120 个中文字符。
+- 不编造经历、数字、公司、工具或头衔。
+- 只使用简历素材和 JD 内容作为证据。
+- 优先使用具体证据，而不是泛泛表达热情。
+- 在草稿旁展示所使用的简历证据。
+- 如果证据弱或草稿过于泛化，要给出提示。
 
-The generator should return structured data:
+生成器返回结构化结果：
 
 ```ts
 interface GreetingResult {
@@ -269,85 +269,85 @@ interface GreetingResult {
 }
 ```
 
-## Human Review And Sending
+## 人审和发送
 
-Sending is always manually triggered.
+发送必须始终由用户手动触发。
 
-The `Send` button should be disabled until:
+`发送` 按钮在以下条件满足前应保持禁用：
 
-- A specific job is selected.
-- A greeting draft exists.
-- The user is logged in on Boss.
-- No verification or rate-limit warning is visible.
+- 已选择具体岗位。
+- 已生成打招呼语草稿。
+- 用户已登录 Boss。
+- 页面没有出现验证码、校验或速率限制提示。
 
-When the user clicks `Send`:
+用户点击 `发送` 后：
 
-1. Confirm current job and greeting.
-2. If needed, establish the Boss communication relation using the page's normal available action.
-3. Insert or send the greeting through a page-supported channel.
-4. Log the outcome.
-5. Store company and recruiter dedupe keys.
+1. 确认当前岗位和打招呼语。
+2. 如有必要，使用页面正常可用的动作建立 Boss 沟通关系。
+3. 通过页面支持的通道插入或发送打招呼语。
+4. 记录发送结果。
+5. 保存公司和招聘者去重 key。
 
-If direct page chat sending is unstable, MVP can fall back to copying the greeting and focusing the Boss chat input. The UI should clearly mark this as `Copy + Focus`, not a completed send.
+如果直接页面聊天发送不稳定，MVP 可以退回到复制打招呼语并聚焦 Boss 聊天输入框。此时 UI 必须明确标记为 `复制并聚焦`，不能把它记录成已发送。
 
-## Data Storage
+## 数据存储
 
-Use extension local storage for:
+使用扩展本地存储保存：
 
-- Settings.
-- Resume material.
-- LLM provider configuration.
-- Captured job cache.
-- Sent and skipped history.
-- Company and recruiter dedupe sets.
-- Blacklist.
-- Daily counters.
-- Error logs.
+- 设置。
+- 简历素材。
+- LLM provider 配置。
+- 已抓取岗位缓存。
+- 已发送和已跳过历史。
+- 公司和招聘者去重集合。
+- 黑名单。
+- 每日计数。
+- 错误日志。
 
-No cookie export/import feature is included.
+不包含 cookie 导出/导入功能。
 
-## Error Handling
+## 错误处理
 
-The app should fail closed.
+应用应默认保守失败。
 
-Pause scanning or sending when:
+遇到以下情况时暂停扫描或发送：
 
-- Boss shows captcha or verification.
-- Login state is lost.
-- Network calls repeatedly fail.
-- DOM/page runtime adapter cannot identify current page state.
-- Boss rate-limit warning appears.
-- Message sending channel is unavailable.
+- Boss 出现验证码或校验。
+- 登录状态丢失。
+- 网络调用连续失败。
+- DOM 或页面运行时适配器无法识别当前页面状态。
+- Boss 出现速率限制提示。
+- 消息发送通道不可用。
 
-Display errors in plain language with a next action:
+错误提示应使用明确的人话，并给出下一步动作：
 
-- `Paused: verification detected. Please resolve it in Boss, then resume.`
-- `Send channel unavailable. Greeting copied; please paste manually.`
-- `Job detail failed after 3 attempts. Skipped this job.`
+- `已暂停：检测到平台校验。请先在 Boss 页面处理，然后继续。`
+- `发送通道不可用。已复制打招呼语，请手动粘贴。`
+- `岗位详情连续 3 次获取失败，已跳过该岗位。`
 
-## Testing And Verification
+## 测试和验收
 
-Minimum verification for MVP:
+MVP 最低验收项：
 
-- Extension builds successfully.
-- Panel mounts on Boss job-list pages.
-- Panel does not mount on unrelated pages.
-- Current-page capture works.
-- Multi-page scan stops at configured limits.
-- Pause and stop work during scan.
-- Duplicate company and recruiter records are respected.
-- Greeting output follows length and evidence constraints.
-- Send requires a user click.
-- Logs persist after page reload.
-- UI has no obvious text overlap at 375px, 768px, 1024px, and desktop widths.
+- 扩展可以成功构建。
+- 面板可以挂载到 Boss 职位列表页。
+- 面板不会挂载到无关页面。
+- 当前页抓取可用。
+- 多页扫描会在配置上限处停止。
+- 扫描过程中暂停和停止可用。
+- 同公司和同招聘者去重生效。
+- 打招呼语符合长度和证据约束。
+- 发送必须依赖用户点击。
+- 日志在页面刷新后仍然保留。
+- UI 在 375px、768px、1024px 和桌面宽度下没有明显文字重叠。
 
-Manual browser verification is required because the target site is dynamic and login-dependent.
+由于目标网站是动态页面且依赖登录态，必须做手动浏览器验证。
 
-## Open Decisions
+## 待决策项
 
-These can be decided during implementation planning:
+这些问题可以在实施计划阶段确定：
 
-- LLM provider: OpenAI-compatible endpoint, Gemini, or local provider.
-- First sender implementation: direct chat send versus copy-and-focus fallback.
-- Whether to use Vue or React. Current recommendation is WXT + Vue + TypeScript because the reference project and extension patterns are close.
-- Exact keyword filters and score threshold defaults.
+- LLM provider：OpenAI-compatible endpoint、Gemini 或本地 provider。
+- 首版发送实现：直接页面聊天发送，还是先做复制并聚焦兜底。
+- 技术栈：Vue 或 React。当前建议是 WXT + Vue + TypeScript，因为参考项目和扩展实现模式更接近。
+- 默认关键词过滤规则和匹配分阈值。
