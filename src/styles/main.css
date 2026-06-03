@@ -361,6 +361,12 @@
   overflow: hidden;
 }
 
+.brs-review-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 .brs-review-head {
   display: flex;
   align-items: flex-start;
@@ -396,7 +402,7 @@
   color: #0f766e;
   background: #f0fdfa;
   border: 1px solid #99f6e4;
-  border-radius: 999px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
   line-height: 1.25;

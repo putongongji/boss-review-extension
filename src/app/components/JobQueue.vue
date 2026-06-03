@@ -17,6 +17,7 @@
         class="brs-job-row"
         :class="{ 'is-selected': job.jobId === store.selectedJobId }"
         type="button"
+        :aria-pressed="job.jobId === store.selectedJobId"
         @click="store.selectJob(job.jobId)"
       >
         <span class="brs-job-row-main">
