@@ -72,11 +72,11 @@ export class DomBossAdapter implements BossPageAdapter {
   }
 
   private getJobHref(card: Element): string {
-    if (card instanceof HTMLAnchorElement) {
-      return card.href || card.getAttribute('href') || ''
+    if (card.matches('a[href*="/job_detail/"]')) {
+      return card.getAttribute('href') || ''
     }
 
-    return card.querySelector<HTMLAnchorElement>('a[href*="/job_detail/"]')?.href ?? ''
+    return card.querySelector('a[href*="/job_detail/"]')?.getAttribute('href') ?? ''
   }
 
   private findNextPageElement(): HTMLElement | null {

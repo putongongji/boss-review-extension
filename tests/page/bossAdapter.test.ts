@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { DomBossAdapter } from '@/page/bossAdapter'
 
 describe('DomBossAdapter', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    document.body.innerHTML = ''
+  })
+
   it('captures visible job cards from DOM', async () => {
     document.body.innerHTML = `
       <a class="job-card-wrapper" href="/job_detail/job-1.html">
@@ -30,11 +35,61 @@ describe('DomBossAdapter', () => {
     })
   })
 
+  it('captures a direct anchor job card without global HTMLAnchorElement', async () => {
+    document.body.innerHTML = `
+      <a class="job-card-wrapper" href="/job_detail/job-anchor.html">
+        <span class="job-name">增长产品经理</span>
+        <span class="company-name">增长科技</span>
+      </a>
+    `
+    vi.stubGlobal('HTMLAnchorElement', undefined)
+
+    const adapter = new DomBossAdapter(document)
+    const jobs = await adapter.captureCurrentPage()
+
+    expect(jobs).toHaveLength(1)
+    expect(jobs[0]).toMatchObject({
+      jobId: 'job-anchor',
+      title: '增长产品经理',
+      company: '增长科技',
+    })
+  })
+
+  it('deduplicates duplicate cards by jobId', async () => {
+    document.body.innerHTML = `
+      <a class="job-card-wrapper" href="/job_detail/job-duplicate.html">
+        <span class="job-name">AI 产品经理</span>
+        <span class="company-name">示例科技</span>
+      </a>
+      <a class="job-card-wrapper" href="/job_detail/job-duplicate.html">
+        <span class="job-name">AI 产品经理</span>
+        <span class="company-name">示例科技</span>
+      </a>
+    `
+
+    const adapter = new DomBossAdapter(document)
+    const jobs = await adapter.captureCurrentPage()
+
+    expect(jobs).toHaveLength(1)
+    expect(jobs[0]?.jobId).toBe('job-duplicate')
+  })
+
   it('detects next page availability', () => {
     document.body.innerHTML = `<button class="next">下一页</button>`
 
     const adapter = new DomBossAdapter(document)
 
     expect(adapter.hasNextPage()).toBe(true)
+  })
+
+  it('clicks the detected next page button', async () => {
+    document.body.innerHTML = `<button class="next">下一页</button>`
+    const nextButton = document.querySelector<HTMLButtonElement>('.next')
+    const clickSpy = vi.spyOn(nextButton!, 'click')
+
+    const adapter = new DomBossAdapter(document)
+
+    await expect(adapter.goNextPage()).resolves.toBe(true)
+    expect(clickSpy).toHaveBeenCalledOnce()
   })
 })
