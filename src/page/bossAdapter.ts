@@ -74,14 +74,13 @@ export class DomBossAdapter implements BossPageAdapter {
 
     const before = this.getPageSignature()
     next.click()
-    await this.waitForPageTransition(before)
-    return true
+    return this.waitForPageTransition(before)
   }
 
-  private async waitForPageTransition(before: PageSignature): Promise<void> {
+  private async waitForPageTransition(before: PageSignature): Promise<boolean> {
     if (!before.firstJobId) {
       await sleep(this.options.emptyListWaitMs ?? DEFAULT_EMPTY_LIST_WAIT_MS)
-      return
+      return true
     }
 
     const timeoutMs = this.options.pageTransitionTimeoutMs ?? DEFAULT_PAGE_TRANSITION_TIMEOUT_MS
@@ -92,12 +91,14 @@ export class DomBossAdapter implements BossPageAdapter {
       await sleep(pollMs)
       const current = this.getPageSignature()
       if (current.firstJobId && current.firstJobId !== before.firstJobId) {
-        return
+        return true
       }
       if (current.content && current.content !== before.content) {
-        return
+        return true
       }
     }
+
+    return false
   }
 
   private getPageSignature(): PageSignature {

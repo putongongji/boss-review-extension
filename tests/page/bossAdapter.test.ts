@@ -121,4 +121,22 @@ describe('DomBossAdapter', () => {
 
     expect(jobs.map((job) => job.jobId)).toEqual(['job-page-2'])
   })
+
+  it('returns false when next click does not change the job list before timeout', async () => {
+    document.body.innerHTML = `
+      <div class="job-list">
+        <a class="job-card-wrapper" href="/job_detail/job-page-1.html">
+          <span class="job-name">AI 产品经理</span>
+          <span class="company-name">示例科技</span>
+        </a>
+      </div>
+      <button class="next">下一页</button>
+    `
+    const nextButton = document.querySelector<HTMLButtonElement>('.next')!
+    const clickSpy = vi.spyOn(nextButton, 'click')
+    const adapter = new DomBossAdapter(document, { pageTransitionPollMs: 1, pageTransitionTimeoutMs: 5 })
+
+    await expect(adapter.goNextPage()).resolves.toBe(false)
+    expect(clickSpy).toHaveBeenCalledOnce()
+  })
 })

@@ -51,7 +51,8 @@ export class ScanController {
       if (this.stopped) break
       await sleep(randomBetween(this.settings.pageDelayMinMs, this.settings.pageDelayMaxMs))
       if (this.stopped) break
-      await this.adapter.goNextPage()
+      const navigated = await this.adapter.goNextPage()
+      if (!navigated) break
     }
 
     return [...collected.values()]

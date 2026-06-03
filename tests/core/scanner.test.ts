@@ -109,6 +109,43 @@ describe('ScanController', () => {
 
     expect(jobs.map((job) => job.jobId)).toEqual(['job-page-1', 'job-page-2'])
   })
+
+  it('stops scanning when next page navigation fails', async () => {
+    let captureCalls = 0
+    let goNextCalls = 0
+    const adapter: BossPageAdapter = {
+      async captureCurrentPage() {
+        captureCalls += 1
+        return [
+          {
+            jobId: `job-capture-${captureCalls}`,
+            title: 'AI 产品经理',
+            company: '示例科技',
+            skills: [],
+            welfare: [],
+            sourceUrl: 'https://www.zhipin.com',
+          },
+        ]
+      },
+      async enrichJob(job) {
+        return job
+      },
+      hasNextPage() {
+        return true
+      },
+      async goNextPage() {
+        goNextCalls += 1
+        return false
+      },
+    }
+    const controller = new ScanController(adapter, createTestSettings({ maxPages: 5, maxJobs: 20 }))
+
+    const jobs = await controller.scan()
+
+    expect(jobs.map((job) => job.jobId)).toEqual(['job-capture-1'])
+    expect(captureCalls).toBe(1)
+    expect(goNextCalls).toBe(1)
+  })
 })
 
 function createTestSettings(overrides: Partial<typeof DEFAULT_SETTINGS>) {
