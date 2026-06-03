@@ -2351,3 +2351,10 @@ git commit -m "docs: record Boss extension verification"
 - Spec 覆盖：计划覆盖了 WXT 扩展骨架、页面挂载、当前页抓取、多页扫描、岗位详情/pipeline、简历配置、打招呼语、人审队列、复制并聚焦兜底、同公司/同招聘者去重、本地日志入口、暂停停止基础结构、UI 验收和最终构建验证。
 - 风险边界：计划没有实现无人值守自动发送、多账号 cookie 管理、自动回复、验证码绕过或平台限制绕过。发送首版明确为复制并聚焦兜底，不能记录为已发送。
 - 待扩展项：直接聊天发送、LLM provider API 调用、Boss Vue runtime 深度 hook 可以在 MVP smoke test 通过后作为后续计划补充。
+
+## Verification Result
+
+- `pnpm test`: passed, 10 test files and 36 tests.
+- `pnpm run typecheck`: passed.
+- `pnpm run build`: passed, Chrome MV3 output generated under `.output/chrome-mv3`.
+- Manual Boss page smoke test: blocked because Boss login or site access was unavailable in this environment.
