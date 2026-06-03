@@ -1,13 +1,25 @@
 import { mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import App from '@/app/App.vue'
 import { useReviewStore } from '@/app/stores/reviewStore'
 import type { ReviewJob } from '@/core/types'
 
+const mocks = vi.hoisted(() => ({
+  ExtensionStorage: vi.fn(),
+}))
+
+vi.mock('@/core/storage', () => ({
+  ExtensionStorage: mocks.ExtensionStorage,
+}))
+
 describe('App', () => {
   it('renders the review panel controls', () => {
+    mocks.ExtensionStorage.mockImplementation(() => ({
+      getSettings: vi.fn(),
+      getResumeMaterial: vi.fn(),
+    }))
     const wrapper = mount(App, {
       global: {
         plugins: [createPinia()],
@@ -21,6 +33,10 @@ describe('App', () => {
   })
 
   it('marks the selected queue row semantically', async () => {
+    mocks.ExtensionStorage.mockImplementation(() => ({
+      getSettings: vi.fn(),
+      getResumeMaterial: vi.fn(),
+    }))
     const pinia = createPinia()
     const wrapper = mount(App, {
       global: {

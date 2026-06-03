@@ -1,9 +1,15 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import type { ReviewJob } from '@/core/types'
+import { DEFAULT_SETTINGS } from '@/core/defaults'
+import { runJobPipeline } from '@/core/pipeline'
+import { ScanController } from '@/core/scanner'
+import { ExtensionStorage } from '@/core/storage'
+import type { CapturedJob, ReviewJob } from '@/core/types'
+import { DomBossAdapter } from '@/page/bossAdapter'
 
 export const useReviewStore = defineStore('review', () => {
+  const storage = new ExtensionStorage()
   const jobs = ref<ReviewJob[]>([])
   const selectedJobId = ref<string>('')
   const scanning = ref(false)
@@ -35,8 +41,56 @@ export const useReviewStore = defineStore('review', () => {
     updateSelected({ status: 'sent', statusMessage: '已发送' })
   }
 
+  async function scanCurrentPage(): Promise<void> {
+    scanning.value = true
+    try {
+      const { settings, resumeMaterial } = await getScanInputs()
+      const adapter = new DomBossAdapter(document)
+      const captured = await adapter.captureCurrentPage()
+      const drafted = await draftJobs(captured, settings, resumeMaterial)
+      setJobs(drafted)
+    } finally {
+      scanning.value = false
+    }
+  }
+
+  async function scanPages(): Promise<void> {
+    scanning.value = true
+    try {
+      const { settings, resumeMaterial } = await getScanInputs()
+      const adapter = new DomBossAdapter(document)
+      const controller = new ScanController(adapter, settings)
+      const captured = await controller.scan()
+      const drafted = await draftJobs(captured, settings, resumeMaterial)
+      setJobs(drafted)
+    } finally {
+      scanning.value = false
+    }
+  }
+
   function updateSelected(patch: Partial<ReviewJob>): void {
     jobs.value = jobs.value.map((job) => (job.jobId === selectedJobId.value ? { ...job, ...patch } : job))
+  }
+
+  async function getScanInputs() {
+    const [storedSettings, resumeMaterial] = await Promise.all([storage.getSettings(), storage.getResumeMaterial()])
+    return {
+      settings: { ...DEFAULT_SETTINGS, ...storedSettings },
+      resumeMaterial,
+    }
+  }
+
+  async function draftJobs(captured: CapturedJob[], settings: typeof DEFAULT_SETTINGS, resumeMaterial: string) {
+    return Promise.all(
+      captured.map((job) =>
+        runJobPipeline({
+          job,
+          resumeMaterial,
+          settings,
+          storage,
+        }),
+      ),
+    )
   }
 
   return {
@@ -50,6 +104,8 @@ export const useReviewStore = defineStore('review', () => {
     selectJob,
     skipSelected,
     markSelectedSent,
+    scanCurrentPage,
+    scanPages,
     updateSelected,
   }
 })
