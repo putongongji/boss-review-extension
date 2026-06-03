@@ -1,0 +1,59 @@
+import type { Settings, CapturedJob } from './types'
+import type { BossPageAdapter } from '@/page/bossAdapter'
+import { randomBetween, sleep } from '@/utils/delay'
+
+export class ScanController {
+  private stopped = false
+  private paused = false
+
+  constructor(
+    private readonly adapter: BossPageAdapter,
+    private readonly settings: Settings,
+  ) {}
+
+  pause(): void {
+    this.paused = true
+  }
+
+  resume(): void {
+    this.paused = false
+  }
+
+  stop(): void {
+    this.stopped = true
+  }
+
+  async scan(): Promise<CapturedJob[]> {
+    const collected = new Map<string, CapturedJob>()
+
+    for (let page = 1; page <= this.settings.maxPages; page += 1) {
+      if (this.stopped) break
+      await this.waitWhilePaused()
+
+      const jobs = await this.adapter.captureCurrentPage()
+      for (const job of jobs) {
+        if (collected.size >= this.settings.maxJobs) break
+        if (!collected.has(job.jobId)) {
+          const enriched = await this.adapter.enrichJob(job)
+          collected.set(enriched.jobId, enriched)
+          await sleep(randomBetween(this.settings.detailDelayMinMs, this.settings.detailDelayMaxMs))
+        }
+      }
+
+      if (collected.size >= this.settings.maxJobs) break
+      if (page >= this.settings.maxPages) break
+      if (!this.adapter.hasNextPage()) break
+
+      await sleep(randomBetween(this.settings.pageDelayMinMs, this.settings.pageDelayMaxMs))
+      await this.adapter.goNextPage()
+    }
+
+    return [...collected.values()]
+  }
+
+  private async waitWhilePaused(): Promise<void> {
+    while (this.paused && !this.stopped) {
+      await sleep(100)
+    }
+  }
+}
