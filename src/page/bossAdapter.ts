@@ -1,4 +1,5 @@
 import type { CapturedJob } from '@/core/types'
+import { sleep } from '@/utils/delay'
 
 export interface BossPageAdapter {
   captureCurrentPage(): Promise<CapturedJob[]>
@@ -7,8 +8,26 @@ export interface BossPageAdapter {
   goNextPage(): Promise<boolean>
 }
 
+export interface DomBossAdapterOptions {
+  pageTransitionTimeoutMs?: number
+  pageTransitionPollMs?: number
+  emptyListWaitMs?: number
+}
+
+interface PageSignature {
+  firstJobId: string | null
+  content: string
+}
+
+const DEFAULT_PAGE_TRANSITION_TIMEOUT_MS = 5000
+const DEFAULT_PAGE_TRANSITION_POLL_MS = 100
+const DEFAULT_EMPTY_LIST_WAIT_MS = 250
+
 export class DomBossAdapter implements BossPageAdapter {
-  constructor(private readonly doc: Document = document) {}
+  constructor(
+    private readonly doc: Document = document,
+    private readonly options: DomBossAdapterOptions = {},
+  ) {}
 
   async captureCurrentPage(): Promise<CapturedJob[]> {
     const seen = new Set<string>()
@@ -53,8 +72,40 @@ export class DomBossAdapter implements BossPageAdapter {
       return false
     }
 
+    const before = this.getPageSignature()
     next.click()
+    await this.waitForPageTransition(before)
     return true
+  }
+
+  private async waitForPageTransition(before: PageSignature): Promise<void> {
+    if (!before.firstJobId) {
+      await sleep(this.options.emptyListWaitMs ?? DEFAULT_EMPTY_LIST_WAIT_MS)
+      return
+    }
+
+    const timeoutMs = this.options.pageTransitionTimeoutMs ?? DEFAULT_PAGE_TRANSITION_TIMEOUT_MS
+    const pollMs = this.options.pageTransitionPollMs ?? DEFAULT_PAGE_TRANSITION_POLL_MS
+    const deadline = Date.now() + timeoutMs
+
+    while (Date.now() < deadline) {
+      await sleep(pollMs)
+      const current = this.getPageSignature()
+      if (current.firstJobId && current.firstJobId !== before.firstJobId) {
+        return
+      }
+      if (current.content && current.content !== before.content) {
+        return
+      }
+    }
+  }
+
+  private getPageSignature(): PageSignature {
+    const cards = this.findJobCards()
+    const firstJobId = extractJobId(cards[0] ? this.getJobHref(cards[0]) : '') ?? null
+    const content = cards.map((card) => `${this.getJobHref(card)} ${normalizeText(card.textContent)}`).join('\n')
+
+    return { firstJobId, content }
   }
 
   private findJobCards(): Element[] {

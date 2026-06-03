@@ -75,6 +75,40 @@ describe('ScanController', () => {
     expect(enrichedJobIds).toEqual(['job-1'])
     expect(goNextCalls).toBe(0)
   })
+
+  it('captures the next page after async page navigation resolves', async () => {
+    let visiblePage = 1
+    const adapter: BossPageAdapter = {
+      async captureCurrentPage() {
+        return [
+          {
+            jobId: `job-page-${visiblePage}`,
+            title: 'AI 产品经理',
+            company: '示例科技',
+            skills: [],
+            welfare: [],
+            sourceUrl: 'https://www.zhipin.com',
+          },
+        ]
+      },
+      async enrichJob(job) {
+        return job
+      },
+      hasNextPage() {
+        return visiblePage < 2
+      },
+      async goNextPage() {
+        await new Promise((resolve) => setTimeout(resolve, 1))
+        visiblePage = 2
+        return true
+      },
+    }
+    const controller = new ScanController(adapter, createTestSettings({ maxPages: 2, maxJobs: 20 }))
+
+    const jobs = await controller.scan()
+
+    expect(jobs.map((job) => job.jobId)).toEqual(['job-page-1', 'job-page-2'])
+  })
 })
 
 function createTestSettings(overrides: Partial<typeof DEFAULT_SETTINGS>) {
