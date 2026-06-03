@@ -32,19 +32,25 @@ export class ScanController {
 
       const jobs = await this.adapter.captureCurrentPage()
       for (const job of jobs) {
+        if (this.stopped) break
         if (collected.size >= this.settings.maxJobs) break
         if (!collected.has(job.jobId)) {
           const enriched = await this.adapter.enrichJob(job)
           collected.set(enriched.jobId, enriched)
+          if (this.stopped) break
           await sleep(randomBetween(this.settings.detailDelayMinMs, this.settings.detailDelayMaxMs))
+          if (this.stopped) break
         }
       }
 
+      if (this.stopped) break
       if (collected.size >= this.settings.maxJobs) break
       if (page >= this.settings.maxPages) break
       if (!this.adapter.hasNextPage()) break
 
+      if (this.stopped) break
       await sleep(randomBetween(this.settings.pageDelayMinMs, this.settings.pageDelayMaxMs))
+      if (this.stopped) break
       await this.adapter.goNextPage()
     }
 
