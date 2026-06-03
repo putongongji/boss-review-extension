@@ -57,4 +57,16 @@ describe('runJobPipeline', () => {
     expect(result.status).toBe('filtered')
     expect(result.statusMessage).toContain('关键词')
   })
+
+  it('filters blacklisted recruiter by id', async () => {
+    const result = await runJobPipeline({
+      job: baseJob,
+      resumeMaterial: '6年AI产品经验',
+      settings: { ...DEFAULT_SETTINGS, blacklistRecruiters: ['recruiter-1'] },
+      storage: new ExtensionStorage(createMemoryStorageArea()),
+    })
+
+    expect(result.status).toBe('filtered')
+    expect(result.statusMessage).toContain('招聘者')
+  })
 })

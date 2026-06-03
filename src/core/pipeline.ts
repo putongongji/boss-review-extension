@@ -26,6 +26,11 @@ export async function runJobPipeline(input: PipelineInput): Promise<ReviewJob> {
     return { ...base, status: 'filtered', statusMessage: '公司在黑名单中' }
   }
 
+  const recruiterValues = [job.recruiterId, job.recruiterName].filter((value): value is string => Boolean(value))
+  if (recruiterValues.some((value) => settings.blacklistRecruiters.includes(value))) {
+    return { ...base, status: 'filtered', statusMessage: '招聘者在黑名单中' }
+  }
+
   const filterText = `${job.title} ${job.company} ${job.jdText ?? ''}`
   if (includesAny(filterText, settings.keywordExcludes)) {
     return { ...base, status: 'filtered', statusMessage: '命中排除关键词' }
