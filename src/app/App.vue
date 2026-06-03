@@ -15,6 +15,7 @@
         <JobQueue />
         <JobReview />
       </section>
+      <SettingsPanel />
     </main>
   </aside>
 </template>
@@ -23,5 +24,6 @@
 import JobQueue from '@/app/components/JobQueue.vue'
 import JobReview from '@/app/components/JobReview.vue'
 import ScanControls from '@/app/components/ScanControls.vue'
+import SettingsPanel from '@/app/components/SettingsPanel.vue'
 import StatsBar from '@/app/components/StatsBar.vue'
 </script>

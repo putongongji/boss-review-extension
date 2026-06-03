@@ -497,6 +497,69 @@
   min-height: 100%;
 }
 
+.brs-settings {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.brs-settings summary {
+  cursor: pointer;
+  padding: 11px 12px;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.brs-settings-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.brs-field,
+.brs-field-grid {
+  display: grid;
+  gap: 7px;
+}
+
+.brs-field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.brs-field span {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.brs-field textarea,
+.brs-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.brs-field textarea {
+  resize: vertical;
+}
+
+.brs-field textarea:focus,
+.brs-field input:focus {
+  outline: none;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18);
+}
+
 button:disabled,
 .brs-button:disabled,
 .brs-icon-button:disabled {
