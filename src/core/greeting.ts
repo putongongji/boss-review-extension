@@ -4,6 +4,7 @@ import { compactText, includesAny, trimToLength } from '@/utils/text'
 const RISK_KEYWORDS = ['外包', '销售', '电销', '驻场']
 const STRONG_MATCH_KEYWORDS = ['AI', '智能体', 'ToB', 'SaaS', '增长', '数据分析', '需求分析']
 const UNSUPPORTED_CLAIMS = ['前字节', '百人团队', '负责人', '千万级', '上市公司']
+const JD_CAPABILITY_PHRASES = ['AI产品规划', 'AI 应用产品规划', '需求拆解', '跨团队推进', '数据分析']
 
 export function buildGreetingPrompt(job: CapturedJob, resumeMaterial: string): string {
   return `你是求职打招呼语助手。请只基于简历素材和 JD 生成中文 Boss 直聘打招呼语。
@@ -36,12 +37,18 @@ export function createRuleBasedGreeting(job: CapturedJob, resumeMaterial: string
   const risks = detectRisks(job)
   const score = calculateScore(evidence, risks)
   const scoreLabel = toScoreLabel(score)
-  const hook = evidence[0] || '有相关产品经验'
-  const roleSignal = job.title.includes('AI') || jd.includes('AI') ? 'AI产品规划/落地' : '岗位核心要求'
-  const greeting = trimToLength(
-    `你好，${hook}。我过往经历和这个岗位的${roleSignal}、需求拆解及跨团队推进较匹配，已附简历供参考，想进一步沟通。`,
-    150,
-  )
+  const hook = evidence[0]
+  const roleSignal = selectRoleSignal(job, jd, evidence)
+  const greeting =
+    evidence.length > 0
+      ? trimToLength(
+          `你好，${hook}。我关注到岗位需要${roleSignal}，过往经历和要求较匹配，已附简历供参考，想进一步沟通。`,
+          150,
+        )
+      : trimToLength(
+          `你好，已关注到${job.title || '这个岗位'}机会。当前简历素材与JD匹配证据有限，先发简历供参考，如合适可进一步沟通。`,
+          150,
+        )
 
   return {
     score,
@@ -64,9 +71,10 @@ export function validateGreetingResult(
   const allowedText = compactText(
     `${resumeMaterial} ${job.title} ${job.company} ${job.jdText ?? ''} ${job.skills.join(' ')}`,
   )
-  const unsupported = UNSUPPORTED_CLAIMS.find(
-    (claim) => result.greeting.includes(claim) && !allowedText.includes(claim),
+  const generatedText = compactText(
+    `${result.greeting} ${result.jdSummary} ${result.matchedEvidence.join(' ')} ${result.risks.join(' ')} ${result.rationale}`,
   )
+  const unsupported = UNSUPPORTED_CLAIMS.find((claim) => generatedText.includes(claim) && !allowedText.includes(claim))
   if (unsupported) return { ok: false, reason: `包含未提供证据：${unsupported}` }
   if (!result.greeting.startsWith('你好')) return { ok: false, reason: '缺少简短问候' }
 
@@ -79,12 +87,10 @@ function selectEvidence(resume: string, jd: string): string[] {
     .map(compactText)
     .filter(Boolean)
 
-  const matched = candidates.filter((line) => {
-    const lineTokens = STRONG_MATCH_KEYWORDS.filter((keyword) => line.includes(keyword))
-    return lineTokens.some((keyword) => jd.includes(keyword))
-  })
+  const jdTerms = extractTerms(jd)
+  const matched = candidates.filter((line) => hasOverlap(line, jdTerms))
 
-  return (matched.length > 0 ? matched : candidates).slice(0, 2)
+  return matched.slice(0, 2)
 }
 
 function detectRisks(job: CapturedJob): string[] {
@@ -93,6 +99,7 @@ function detectRisks(job: CapturedJob): string[] {
 }
 
 function calculateScore(evidence: string[], risks: string[]): number {
+  if (evidence.length === 0) return Math.max(30, 45 - risks.length * 10)
   return Math.max(30, Math.min(95, 55 + evidence.length * 15 - risks.length * 10))
 }
 
@@ -100,4 +107,33 @@ function toScoreLabel(score: number): ScoreLabel {
   if (score >= 80) return 'high'
   if (score >= 60) return 'medium'
   return 'low'
+}
+
+function selectRoleSignal(job: CapturedJob, jd: string, evidence: string[]): string {
+  const evidenceText = evidence.join(' ')
+  const skillSignal = job.skills.filter((skill) => hasOverlap(evidenceText, [skill])).slice(0, 2).join('、')
+  if (skillSignal) return skillSignal
+
+  const jdSignal = JD_CAPABILITY_PHRASES.filter((phrase) => jd.includes(phrase)).slice(0, 2).join('、')
+  if (jdSignal) return jdSignal
+
+  return job.title || '岗位核心要求'
+}
+
+function hasOverlap(text: string, terms: string[]): boolean {
+  const compactedText = compactText(text).toLowerCase().replace(/\s+/g, '')
+  return terms.some((term) => compactedText.includes(term.toLowerCase().replace(/\s+/g, '')))
+}
+
+function extractTerms(text: string): string[] {
+  const compactedText = compactText(text)
+  const knownTerms = [...STRONG_MATCH_KEYWORDS, ...JD_CAPABILITY_PHRASES].filter((keyword) =>
+    hasOverlap(compactedText, [keyword]),
+  )
+  const literalTerms = compactedText
+    .split(/[，。；、,.;:\s/()（）+-]+/)
+    .map(compactText)
+    .filter((term) => term.length >= 2 && !/^(负责|岗位|要求|经验|学历|公司|地点|薪资)$/.test(term))
+
+  return Array.from(new Set([...knownTerms, ...literalTerms]))
 }

@@ -48,4 +48,40 @@ describe('greeting generation', () => {
 
     expect(validateGreetingResult(invalid, job, '6年AI产品经验，做过智能体和ToB产品。').ok).toBe(false)
   })
+
+  it('keeps unrelated resume material out of matched evidence and greeting', () => {
+    const result = createRuleBasedGreeting(job, '5年餐饮门店运营经验，熟悉排班和库存管理。')
+
+    expect(result.matchedEvidence).toEqual([])
+    expect(result.scoreLabel).toBe('low')
+    expect(result.greeting).not.toContain('餐饮门店运营')
+    expect(result.greeting).not.toContain('排班')
+    expect(result.greeting).not.toContain('库存管理')
+  })
+
+  it('rejects unsupported claims outside the greeting text', () => {
+    const result = createRuleBasedGreeting(job, '6年AI产品经验，做过智能体和ToB产品。')
+    const invalidEvidence = { ...result, matchedEvidence: ['前字节AI负责人'] }
+    const invalidRationale = { ...result, rationale: '曾管理过百人团队，所以匹配度高。' }
+
+    expect(validateGreetingResult(invalidEvidence, job, '6年AI产品经验，做过智能体和ToB产品。').ok).toBe(false)
+    expect(validateGreetingResult(invalidRationale, job, '6年AI产品经验，做过智能体和ToB产品。').ok).toBe(false)
+  })
+
+  it('avoids specific unsupported capability phrases without JD or resume overlap', () => {
+    const genericJob: CapturedJob = {
+      ...job,
+      jobId: 'job-2',
+      title: '运营专员',
+      skills: [],
+      jdText: '',
+      sourceUrl: 'https://www.zhipin.com/job_detail/job-2.html',
+    }
+    const result = createRuleBasedGreeting(genericJob, '6年AI产品经验，做过智能体和ToB产品。')
+
+    expect(result.matchedEvidence).toEqual([])
+    expect(result.greeting).not.toContain('AI产品规划')
+    expect(result.greeting).not.toContain('需求拆解')
+    expect(result.greeting).not.toContain('跨团队推进')
+  })
 })
