@@ -33,8 +33,8 @@ describe('App', () => {
     await wrapper.vm.$nextTick()
 
     const rows = wrapper.findAll('.brs-job-row')
-    expect(rows[0].attributes('aria-pressed')).toBe('true')
-    expect(rows[1].attributes('aria-pressed')).toBe('false')
+    expect(rows[0].attributes('aria-current')).toBe('true')
+    expect(rows[1].attributes('aria-current')).toBeUndefined()
   })
 })
 
