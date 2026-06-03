@@ -26,6 +26,21 @@ describe('ExtensionStorage', () => {
     })
   })
 
+  it('returns fresh default settings arrays', async () => {
+    const storage = new ExtensionStorage(createMemoryStorageArea())
+
+    const first = await storage.getSettings()
+    first.blacklistCompanies.push('公司')
+    first.blacklistRecruiters.push('招聘者')
+    first.keywordExcludes.push('新增')
+
+    const second = await storage.getSettings()
+
+    expect(second.blacklistCompanies).not.toContain('公司')
+    expect(second.blacklistRecruiters).not.toContain('招聘者')
+    expect(second.keywordExcludes).not.toContain('新增')
+  })
+
   it('stores resume material and dedupe keys', async () => {
     const storage = new ExtensionStorage(createMemoryStorageArea())
 

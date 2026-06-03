@@ -36,12 +36,21 @@ export function createMemoryStorageArea(seed: StorageRecord = {}): StorageAreaLi
   }
 }
 
+function cloneSettings(settings: Settings): Settings {
+  return {
+    ...settings,
+    blacklistCompanies: [...settings.blacklistCompanies],
+    blacklistRecruiters: [...settings.blacklistRecruiters],
+    keywordExcludes: [...settings.keywordExcludes],
+  }
+}
+
 export class ExtensionStorage {
   constructor(private readonly area: StorageAreaLike = chrome.storage.local) {}
 
   async getSettings(): Promise<Settings> {
     const data = await this.area.get({ [KEYS.settings]: {} })
-    return { ...DEFAULT_SETTINGS, ...(data[KEYS.settings] as Partial<Settings>) }
+    return cloneSettings({ ...DEFAULT_SETTINGS, ...(data[KEYS.settings] as Partial<Settings>) })
   }
 
   async saveSettings(settings: Partial<Settings>): Promise<void> {
