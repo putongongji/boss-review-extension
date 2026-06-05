@@ -7,7 +7,17 @@
             <h2>{{ store.selectedJob.title }}</h2>
             <p>{{ store.selectedJob.company }}</p>
           </div>
-          <span class="brs-status-pill">{{ store.selectedJob.statusMessage }}</span>
+          <span class="brs-status-pill">{{ statusLabel }}</span>
+        </div>
+
+        <div v-if="store.selectedJob.status === 'failed'" class="brs-error-block" role="alert">
+          <strong>操作失败</strong>
+          <p>{{ store.selectedJob.statusMessage }}</p>
+        </div>
+
+        <div v-else class="brs-result-block">
+          <strong>结果</strong>
+          <p>{{ store.selectedJob.statusMessage }}</p>
         </div>
 
         <dl class="brs-job-facts">
@@ -23,64 +33,79 @@
             <dt>经验</dt>
             <dd>{{ store.selectedJob.experience || '未标注' }}</dd>
           </div>
+          <div>
+            <dt>学历</dt>
+            <dd>{{ store.selectedJob.degree || '未标注' }}</dd>
+          </div>
+          <div>
+            <dt>招聘者</dt>
+            <dd>{{ recruiterText }}</dd>
+          </div>
+          <div>
+            <dt>工作地点</dt>
+            <dd>{{ store.selectedJob.workAddress || '未标注' }}</dd>
+          </div>
         </dl>
 
         <div class="brs-review-block">
-          <h3>JD 摘要</h3>
-          <p>{{ store.selectedJob.greeting?.jdSummary || '等待生成岗位摘要。' }}</p>
+          <h3>JD 内容</h3>
+          <p class="brs-jd-text">{{ store.selectedJob.jdText || '点击左侧岗位后读取 JD。' }}</p>
         </div>
 
         <div class="brs-review-block">
-          <h3>匹配证据</h3>
-          <ul v-if="store.selectedJob.greeting?.matchedEvidence.length" class="brs-evidence-list">
-            <li v-for="evidence in store.selectedJob.greeting.matchedEvidence" :key="evidence">
-              {{ evidence }}
-            </li>
-          </ul>
-          <p v-else>暂无匹配证据。</p>
-        </div>
-
-        <div class="brs-review-block">
-          <div class="brs-block-title-row">
-            <h3>招呼语草稿</h3>
-            <div class="brs-inline-actions">
-              <button class="brs-icon-button" type="button" aria-label="重写招呼语" title="重写招呼语">
-                <RefreshCcwIcon aria-hidden="true" :size="15" />
-              </button>
-              <button
-                class="brs-icon-button"
-                type="button"
-                aria-label="复制招呼语"
-                title="复制招呼语"
-                @click="store.copySelectedGreeting"
-              >
-                <CopyIcon aria-hidden="true" :size="15" />
-              </button>
-            </div>
+          <h3>岗位关键词</h3>
+          <div v-if="keywordTags.length" class="brs-tag-list">
+            <span v-for="tag in keywordTags" :key="tag">{{ tag }}</span>
           </div>
-          <p class="brs-greeting-draft">
-            {{ store.selectedJob.greeting?.greeting || '等待生成招呼语草稿。' }}
-          </p>
+          <p v-else>暂无关键词。</p>
         </div>
-      </div>
 
-      <div class="brs-review-actions">
-        <button class="brs-button brs-button-primary" type="button">发送</button>
-        <button class="brs-button brs-button-secondary" type="button" @click="store.skipSelected">跳过</button>
+        <div class="brs-review-block">
+          <h3>打招呼</h3>
+          <label class="brs-toggle-row">
+            <input v-model="store.customGreetingEnabled" type="checkbox" />
+            <span>默认打招呼后，延迟发送自定义内容</span>
+          </label>
+          <label class="brs-field">
+            <span>自定义内容</span>
+            <textarea v-model="store.greetingText" rows="3" placeholder="关闭开关时不发送；打开后会在默认打招呼成功后延迟发送。" />
+          </label>
+          <div class="brs-review-actions">
+            <button class="brs-button brs-button-primary" type="button" @click="store.greetSelectedJob">
+              立即沟通
+            </button>
+          </div>
+        </div>
       </div>
     </template>
 
     <div v-else class="brs-empty brs-empty-review">
-      <p>选择一个岗位开始审核</p>
-      <span>扫描结果进入队列后，可在这里查看摘要、证据和招呼语。</span>
+      <p>选择一个岗位</p>
+      <span>左侧岗位来自当前 Boss 页面，点击后读取 JD。</span>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { CopyIcon, RefreshCcwIcon } from 'lucide-vue-next'
+import { computed } from 'vue'
 
 import { useReviewStore } from '@/app/stores/reviewStore'
 
 const store = useReviewStore()
+const recruiterText = computed(() =>
+  [store.selectedJob?.recruiterName, store.selectedJob?.recruiterTitle].filter(Boolean).join(' · ') || '未标注',
+)
+const keywordTags = computed(() => store.selectedJob?.skills?.filter(Boolean).slice(0, 8) ?? [])
+const statusLabel = computed(() => {
+  const status = store.selectedJob?.status
+  const labels: Record<string, string> = {
+    captured: '待读取',
+    enriching: '处理中',
+    drafted: '已读取',
+    reviewing: '已沟通',
+    sent: '已打招呼',
+    failed: '失败',
+  }
+  return status ? labels[status] ?? status : ''
+})
 </script>

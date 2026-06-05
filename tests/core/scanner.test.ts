@@ -23,7 +23,7 @@ describe('ScanController', () => {
     expect(jobs).toHaveLength(1)
   })
 
-  it('stops promptly when stopped during page scan', async () => {
+  it('does not enrich jobs during page scan', async () => {
     let controller: ScanController
     const enrichedJobIds: string[] = []
     let goNextCalls = 0
@@ -64,15 +64,15 @@ describe('ScanController', () => {
     controller = new ScanController(
       adapter,
       createTestSettings({
-        maxPages: 10,
+        maxPages: 1,
         maxJobs: 20,
       }),
     )
 
     const jobs = await controller.scan()
 
-    expect(jobs.map((job) => job.jobId)).toEqual(['job-1'])
-    expect(enrichedJobIds).toEqual(['job-1'])
+    expect(jobs.map((job) => job.jobId)).toEqual(['job-1', 'job-2'])
+    expect(enrichedJobIds).toEqual([])
     expect(goNextCalls).toBe(0)
   })
 

@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from './defaults'
-import type { LocalLogEntry, Settings } from './types'
+import type { GreetingLogEntry, LocalLogEntry, ReviewJob, Settings } from './types'
 
 type StorageRecord = Record<string, unknown>
 
@@ -14,7 +14,11 @@ const KEYS = {
   reviewedCompanies: 'reviewedCompanies',
   reviewedRecruiters: 'reviewedRecruiters',
   logs: 'logs',
+  reviewJobs: 'reviewJobs',
+  greetingLogs: 'greetingLogs',
 } as const
+
+const LEGACY_DEFAULT_KEYWORD_EXCLUDES = ['外包', '销售', '电销']
 
 export function createMemoryStorageArea(seed: StorageRecord = {}): StorageAreaLike {
   const data = new Map<string, unknown>(Object.entries(seed))
@@ -46,11 +50,16 @@ function cloneSettings(settings: Settings): Settings {
 }
 
 export class ExtensionStorage {
-  constructor(private readonly area: StorageAreaLike = chrome.storage.local) {}
+  constructor(private readonly area: StorageAreaLike = getDefaultStorageArea()) {}
 
   async getSettings(): Promise<Settings> {
     const data = await this.area.get({ [KEYS.settings]: {} })
-    return cloneSettings({ ...DEFAULT_SETTINGS, ...(data[KEYS.settings] as Partial<Settings>) })
+    const settings = cloneSettings({ ...DEFAULT_SETTINGS, ...(data[KEYS.settings] as Partial<Settings>) })
+    if (arraysEqual(settings.keywordExcludes, LEGACY_DEFAULT_KEYWORD_EXCLUDES)) {
+      settings.keywordExcludes = []
+    }
+
+    return settings
   }
 
   async saveSettings(settings: Partial<Settings>): Promise<void> {
@@ -65,6 +74,15 @@ export class ExtensionStorage {
 
   async saveResumeMaterial(material: string): Promise<void> {
     await this.area.set({ [KEYS.resumeMaterial]: material })
+  }
+
+  async getReviewJobs(): Promise<ReviewJob[]> {
+    const data = await this.area.get({ [KEYS.reviewJobs]: [] })
+    return Array.isArray(data[KEYS.reviewJobs]) ? (data[KEYS.reviewJobs] as ReviewJob[]) : []
+  }
+
+  async saveReviewJobs(jobs: ReviewJob[]): Promise<void> {
+    await this.area.set({ [KEYS.reviewJobs]: jobs.slice(0, 300) })
   }
 
   async markCompanyReviewed(companyId: string): Promise<void> {
@@ -89,6 +107,16 @@ export class ExtensionStorage {
     await this.area.set({ [KEYS.logs]: [entry, ...logs].slice(0, 500) })
   }
 
+  async getGreetingLogs(): Promise<GreetingLogEntry[]> {
+    const data = await this.area.get({ [KEYS.greetingLogs]: [] })
+    return Array.isArray(data[KEYS.greetingLogs]) ? (data[KEYS.greetingLogs] as GreetingLogEntry[]) : []
+  }
+
+  async appendGreetingLog(entry: GreetingLogEntry): Promise<void> {
+    const logs = await this.getGreetingLogs()
+    await this.area.set({ [KEYS.greetingLogs]: [entry, ...logs].slice(0, 1000) })
+  }
+
   private async addToSet(key: string, value: string): Promise<void> {
     const data = await this.area.get({ [key]: [] })
     const values = new Set(Array.isArray(data[key]) ? (data[key] as string[]) : [])
@@ -101,4 +129,16 @@ export class ExtensionStorage {
     const values = Array.isArray(data[key]) ? (data[key] as string[]) : []
     return values.includes(value)
   }
+}
+
+function arraysEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
+function getDefaultStorageArea(): StorageAreaLike {
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    return chrome.storage.local
+  }
+
+  return createMemoryStorageArea()
 }

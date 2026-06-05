@@ -1,4 +1,5 @@
 import { createRuleBasedGreeting, validateGreetingResult } from './greeting'
+import { generateLlmGreeting } from './llm'
 import type { ExtensionStorage } from './storage'
 import type { CapturedJob, ReviewJob, Settings } from './types'
 import { includesAny } from '@/utils/text'
@@ -11,7 +12,8 @@ export interface PipelineInput {
 }
 
 export async function runJobPipeline(input: PipelineInput): Promise<ReviewJob> {
-  const { job, resumeMaterial, settings, storage } = input
+  const { resumeMaterial, settings, storage } = input
+  const job = normalizeJob(input.job)
   const base = toReviewJob(job, 'captured', '已抓取')
 
   if (job.companyId && (await storage.hasCompanyReviewed(job.companyId))) {
@@ -32,11 +34,15 @@ export async function runJobPipeline(input: PipelineInput): Promise<ReviewJob> {
   }
 
   const filterText = `${job.title} ${job.company} ${job.jdText ?? ''}`
-  if (includesAny(filterText, settings.keywordExcludes)) {
+  if (settings.keywordExcludes.length > 0 && includesAny(filterText, settings.keywordExcludes)) {
     return { ...base, status: 'filtered', statusMessage: '命中排除关键词' }
   }
 
-  const greeting = createRuleBasedGreeting(job, resumeMaterial)
+  let greeting = createRuleBasedGreeting(job, resumeMaterial)
+  if (job.jdText && settings.llmApiKey) {
+    greeting = (await generateLlmGreeting(job, resumeMaterial, settings)) ?? greeting
+  }
+
   const validation = validateGreetingResult(greeting, job, resumeMaterial)
   if (!validation.ok) {
     return { ...base, status: 'failed', statusMessage: validation.reason, greeting }
@@ -47,6 +53,14 @@ export async function runJobPipeline(input: PipelineInput): Promise<ReviewJob> {
     status: 'drafted',
     statusMessage: '已生成草稿',
     greeting,
+  }
+}
+
+function normalizeJob(job: CapturedJob): CapturedJob {
+  return {
+    ...job,
+    skills: Array.isArray(job.skills) ? job.skills.filter((item): item is string => typeof item === 'string') : [],
+    welfare: Array.isArray(job.welfare) ? job.welfare.filter((item): item is string => typeof item === 'string') : [],
   }
 }
 

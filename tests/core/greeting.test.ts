@@ -54,9 +54,22 @@ describe('greeting generation', () => {
 
     expect(result.matchedEvidence).toEqual([])
     expect(result.scoreLabel).toBe('low')
+    expect(result.greeting).toContain('职责聚焦')
+    expect(result.greeting).not.toContain('匹配证据有限')
     expect(result.greeting).not.toContain('餐饮门店运营')
     expect(result.greeting).not.toContain('排班')
     expect(result.greeting).not.toContain('库存管理')
+  })
+
+  it('summarizes JD without noisy section prefixes', () => {
+    const result = createRuleBasedGreeting(
+      { ...job, jdText: '岗位定位 你将负责用户画像与标签体系。岗位职责 设计风控规则后台。任职要求 5年以上产品经验。' },
+      '5年餐饮门店运营经验。',
+    )
+
+    expect(result.jdSummary).toContain('用户画像与标签体系')
+    expect(result.jdSummary).not.toContain('岗位定位')
+    expect(result.jdSummary).not.toContain('岗位职责')
   })
 
   it('rejects unsupported claims outside the greeting text', () => {

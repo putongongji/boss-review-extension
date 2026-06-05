@@ -16,12 +16,14 @@ vi.mock('@/core/storage', () => ({
 }))
 
 describe('App', () => {
-  it('renders the review panel controls', () => {
+  it('renders the current page job panel', () => {
     mocks.ExtensionStorage.mockImplementation(() => ({
       getSettings: vi.fn().mockResolvedValue(DEFAULT_SETTINGS),
       getResumeMaterial: vi.fn().mockResolvedValue(''),
+      getReviewJobs: vi.fn().mockResolvedValue([]),
       saveSettings: vi.fn(),
       saveResumeMaterial: vi.fn(),
+      saveReviewJobs: vi.fn(),
     }))
     const wrapper = mount(App, {
       global: {
@@ -30,17 +32,20 @@ describe('App', () => {
     })
 
     expect(wrapper.text()).toContain('Boss 人审助手')
-    expect(wrapper.text()).toContain('扫描当前页')
-    expect(wrapper.text()).toContain('连续扫描')
+    expect(wrapper.text()).toContain('当前页岗位')
+    expect(wrapper.text()).toContain('刷新')
     expect(wrapper.text()).toContain('待审')
+    expect(wrapper.text()).not.toContain('连续扫描')
   })
 
   it('marks the selected queue row semantically', async () => {
     mocks.ExtensionStorage.mockImplementation(() => ({
       getSettings: vi.fn().mockResolvedValue(DEFAULT_SETTINGS),
       getResumeMaterial: vi.fn().mockResolvedValue(''),
+      getReviewJobs: vi.fn().mockResolvedValue([]),
       saveSettings: vi.fn(),
       saveResumeMaterial: vi.fn(),
+      saveReviewJobs: vi.fn(),
     }))
     const pinia = createPinia()
     const wrapper = mount(App, {

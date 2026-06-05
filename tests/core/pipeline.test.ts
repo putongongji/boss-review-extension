@@ -50,7 +50,7 @@ describe('runJobPipeline', () => {
     const result = await runJobPipeline({
       job: { ...baseJob, jdText: '外包驻场项目，需要销售支持。' },
       resumeMaterial: '6年AI产品经验',
-      settings: DEFAULT_SETTINGS,
+      settings: { ...DEFAULT_SETTINGS, keywordExcludes: ['外包'] },
       storage: new ExtensionStorage(createMemoryStorageArea()),
     })
 
@@ -68,5 +68,16 @@ describe('runJobPipeline', () => {
 
     expect(result.status).toBe('filtered')
     expect(result.statusMessage).toContain('招聘者')
+  })
+
+  it('normalizes stored jobs with invalid skills before drafting', async () => {
+    const result = await runJobPipeline({
+      job: { ...baseJob, skills: 'AI产品' as unknown as CapturedJob['skills'] },
+      resumeMaterial: '6年AI产品经验',
+      settings: DEFAULT_SETTINGS,
+      storage: new ExtensionStorage(createMemoryStorageArea()),
+    })
+
+    expect(result.status).toBe('drafted')
   })
 })

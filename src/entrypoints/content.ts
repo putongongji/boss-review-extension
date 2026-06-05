@@ -23,7 +23,7 @@ function mountApp(): void {
 export default defineContentScript({
   matches: ['*://zhipin.com/*', '*://*.zhipin.com/*'],
   async main() {
-    mountApp()
     await injectScript('/main-world.js', { keepInDom: true })
+    mountApp()
   },
 })

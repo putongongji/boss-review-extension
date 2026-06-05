@@ -35,11 +35,7 @@ export class ScanController {
         if (this.stopped) break
         if (collected.size >= this.settings.maxJobs) break
         if (!collected.has(job.jobId)) {
-          const enriched = await this.adapter.enrichJob(job)
-          collected.set(enriched.jobId, enriched)
-          if (this.stopped) break
-          await sleep(randomBetween(this.settings.detailDelayMinMs, this.settings.detailDelayMaxMs))
-          if (this.stopped) break
+          collected.set(job.jobId, job)
         }
       }
 

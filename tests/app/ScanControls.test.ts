@@ -27,28 +27,21 @@ describe('ScanControls', () => {
     const wrapper = mount(ScanControls)
     const store = useReviewStore()
     const scanCurrentPage = vi.spyOn(store, 'scanCurrentPage').mockResolvedValue()
-    const scanPages = vi.spyOn(store, 'scanPages').mockResolvedValue()
     const buttons = wrapper.findAll('button')
 
     await buttons[0].trigger('click')
-    await buttons[1].trigger('click')
 
     expect(scanCurrentPage).toHaveBeenCalledOnce()
-    expect(scanPages).toHaveBeenCalledOnce()
   })
 
-  it('disables scan buttons while scanning and pause when idle', async () => {
+  it('disables refresh while scanning', async () => {
     const wrapper = mount(ScanControls)
     const store = useReviewStore()
     const buttons = wrapper.findAll('button')
-
-    expect(buttons[2].attributes('disabled')).toBeDefined()
 
     store.scanning = true
     await wrapper.vm.$nextTick()
 
     expect(buttons[0].attributes('disabled')).toBeDefined()
-    expect(buttons[1].attributes('disabled')).toBeDefined()
-    expect(buttons[2].attributes('disabled')).toBeUndefined()
   })
 })

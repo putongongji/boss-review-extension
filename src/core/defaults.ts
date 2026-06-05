@@ -10,9 +10,12 @@ export const DEFAULT_SETTINGS: Settings = {
   dailySendLimit: 30,
   highScoreThreshold: 80,
   mediumScoreThreshold: 60,
+  llmBaseUrl: 'https://api.deepseek.com',
+  llmApiKey: '',
+  llmModel: 'deepseek-chat',
   blacklistCompanies: [],
   blacklistRecruiters: [],
-  keywordExcludes: ['外包', '销售', '电销'],
+  keywordExcludes: [],
 }
 
 export const DEFAULT_RESUME_PATH = '/Users/sanjin/无用/find_job/简历.md'
