@@ -17,5 +17,3 @@ export const DEFAULT_SETTINGS: Settings = {
   blacklistRecruiters: [],
   keywordExcludes: [],
 }
-
-export const DEFAULT_RESUME_PATH = '/Users/sanjin/无用/find_job/简历.md'
