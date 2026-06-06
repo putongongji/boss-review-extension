@@ -8,6 +8,19 @@ import { DomBossAdapter } from '@/page/bossAdapter'
 const AUTO_SYNC_DEBOUNCE_MS = 250
 const ROOT_ID = 'boss-review-sender-root'
 
+interface SessionGreetingRecord {
+  id: string
+  job: ReviewJob
+  status: '成功' | '失败'
+  defaultGreetingContent: string
+  customGreetingEnabled: boolean
+  customGreetingContent: string
+  customGreetingSent: boolean
+  customGreetingError?: string
+  resultMessage: string
+  createdAt: number
+}
+
 export const useReviewStore = defineStore('review', () => {
   const storage = new ExtensionStorage()
   const jobs = ref<ReviewJob[]>([])
@@ -18,6 +31,7 @@ export const useReviewStore = defineStore('review', () => {
   const syncMessage = ref('等待同步')
   const titleFilter = ref('')
   const locationFilter = ref('')
+  const sessionGreetingRecords = ref<SessionGreetingRecord[]>([])
   let observer: MutationObserver | null = null
   let pageClickListener: ((event: MouseEvent) => void) | null = null
   let syncTimer: number | undefined
@@ -135,8 +149,9 @@ export const useReviewStore = defineStore('review', () => {
     try {
       const adapter = new DomBossAdapter(document)
       const enriched = await adapter.enrichJob(job, { focus: true })
+      const enrichedJob = { ...enriched, location: job.location || enriched.location }
       jobs.value = jobs.value.map((item) =>
-        item.jobId === job.jobId ? { ...toReviewJob(enriched), status: 'drafted', statusMessage: '已读取 JD' } : item,
+        item.jobId === job.jobId ? { ...toReviewJob(enrichedJob), status: 'drafted', statusMessage: '已读取 JD' } : item,
       )
     } catch (error) {
       updateJob(job.jobId, {
@@ -158,6 +173,14 @@ export const useReviewStore = defineStore('review', () => {
         sendCustomMessage: customGreetingEnabled.value,
       })
       const log = createGreetingLog(job, outcome)
+      sessionGreetingRecords.value.unshift(createSessionGreetingRecord(job, '成功', {
+        defaultGreetingContent: outcome.defaultGreetingContent,
+        customGreetingEnabled: outcome.customGreetingEnabled,
+        customGreetingContent: outcome.customGreetingContent,
+        customGreetingSent: outcome.customGreetingSent,
+        customGreetingError: outcome.customGreetingError,
+        resultMessage: outcome.resultMessage,
+      }))
       await storage.appendGreetingLog(log)
       updateJob(job.jobId, {
         status: 'sent',
@@ -166,9 +189,18 @@ export const useReviewStore = defineStore('review', () => {
         greetingRecordId: log.id,
       })
     } catch (error) {
+      const message = error instanceof Error ? error.message : '打招呼失败'
+      sessionGreetingRecords.value.unshift(createSessionGreetingRecord(job, '失败', {
+        defaultGreetingContent: '',
+        customGreetingEnabled: customGreetingEnabled.value,
+        customGreetingContent: greetingText.value,
+        customGreetingSent: false,
+        customGreetingError: message,
+        resultMessage: message,
+      }))
       updateJob(job.jobId, {
         status: 'failed',
-        statusMessage: error instanceof Error ? error.message : '打招呼失败',
+        statusMessage: message,
       })
     }
   }
@@ -179,12 +211,12 @@ export const useReviewStore = defineStore('review', () => {
   }
 
   async function exportGreetingLogs(): Promise<void> {
-    const logs = await storage.getGreetingLogs()
-    const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json;charset=utf-8' })
+    const csv = createGreetingCsv(sessionGreetingRecords.value)
+    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `boss-greeting-records-${new Date().toISOString().slice(0, 10)}.json`
+    link.download = `boss-greeting-records-${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -224,6 +256,63 @@ export const useReviewStore = defineStore('review', () => {
     }
   }
 
+  function createSessionGreetingRecord(
+    job: ReviewJob,
+    status: SessionGreetingRecord['status'],
+    data: Omit<SessionGreetingRecord, 'id' | 'job' | 'status' | 'createdAt'>,
+  ): SessionGreetingRecord {
+    return {
+      id: `${job.jobId}-${Date.now()}`,
+      job: { ...job },
+      status,
+      ...data,
+      createdAt: Date.now(),
+    }
+  }
+
+  function createGreetingCsv(records: SessionGreetingRecord[]): string {
+    const headers = [
+      '时间',
+      '状态',
+      '结果',
+      '岗位ID',
+      '岗位名称',
+      '公司',
+      '薪资',
+      '地点',
+      '经验',
+      '学历',
+      '默认打招呼',
+      '自定义开关',
+      '自定义内容',
+      '自定义发送状态',
+      '自定义错误',
+    ]
+    const rows = records.map((record) => [
+      new Date(record.createdAt).toISOString(),
+      record.status,
+      record.resultMessage,
+      record.job.jobId,
+      record.job.title,
+      record.job.company,
+      record.job.salary || '',
+      record.job.location || '',
+      record.job.experience || '',
+      record.job.degree || '',
+      record.defaultGreetingContent,
+      record.customGreetingEnabled ? '开启' : '关闭',
+      record.customGreetingContent,
+      record.customGreetingSent ? '已发送' : '未发送',
+      record.customGreetingError || '',
+    ])
+
+    return [headers, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\n')
+  }
+
+  function escapeCsvCell(value: string): string {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+
   function isBossPageMutation(record: MutationRecord): boolean {
     return !isInsideAssistant(record.target)
   }
@@ -250,6 +339,7 @@ export const useReviewStore = defineStore('review', () => {
     scanning,
     greetingText,
     customGreetingEnabled,
+    sessionGreetingRecords,
     syncMessage,
     titleFilter,
     locationFilter,

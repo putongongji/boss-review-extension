@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useReviewStore } from '@/app/stores/reviewStore'
 import type { ReviewJob } from '@/core/types'
@@ -17,6 +17,7 @@ vi.mock('@/page/bossAdapter', () => ({
 
 describe('reviewStore', () => {
   beforeEach(() => {
+    vi.unstubAllGlobals()
     vi.clearAllMocks()
     mocks.DomBossAdapter.mockImplementation(() => ({
       captureCurrentPage: mocks.captureCurrentPage,
@@ -26,6 +27,10 @@ describe('reviewStore', () => {
     mocks.enrichJob.mockImplementation(async (job) => ({ ...job, jdText: '补全后的 JD' }))
     mocks.greetJob.mockResolvedValue(createGreetOutcome('已后台打招呼，使用 Boss 默认招呼语'))
     setActivePinia(createPinia())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('adds captured jobs and selects first job', () => {
@@ -74,6 +79,18 @@ describe('reviewStore', () => {
     expect(mocks.enrichJob).toHaveBeenCalledWith(job, { focus: true })
     expect(store.selectedJob?.jdText).toBe('当前右侧详情 JD')
     expect(store.selectedJob?.statusMessage).toBe('已读取 JD')
+  })
+
+  it('keeps the list location after detail enrichment returns city only', async () => {
+    const store = useReviewStore()
+    const job = { ...createReviewJob('job-2'), location: '杭州 西湖区 转塘' }
+    store.setJobs([job])
+    mocks.enrichJob.mockResolvedValue({ ...job, location: '杭州', jdText: '当前右侧详情 JD' })
+
+    await store.selectJob('job-2')
+
+    expect(store.selectedJob?.location).toBe('杭州 西湖区 转塘')
+    expect(store.filteredJobs[0].location).toBe('杭州 西湖区 转塘')
   })
 
   it('keeps the current queue when rescanning unchanged list', async () => {
@@ -140,6 +157,47 @@ describe('reviewStore', () => {
     expect(firstJob?.statusMessage).toBe('A 岗位打招呼成功')
     expect(secondJob?.status).not.toBe('sent')
     expect(secondJob?.statusMessage).toBe('已读取 JD')
+  })
+
+  it('exports only current session greeting records as csv', async () => {
+    const store = useReviewStore()
+    class TestBlob {
+      readonly type: string
+
+      constructor(
+        private readonly parts: string[],
+        options: { type: string },
+      ) {
+        this.type = options.type
+      }
+
+      async text() {
+        return this.parts.join('')
+      }
+    }
+    const exportedBlob = { current: null as TestBlob | null }
+    const createObjectURL = vi.fn((blob: TestBlob) => {
+      exportedBlob.current = blob
+      return 'blob:boss-greeting-records'
+    })
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('Blob', TestBlob)
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    store.setJobs([createReviewJob('job-1')])
+    mocks.greetJob.mockResolvedValue(createGreetOutcome('已后台打招呼，并已发送自定义内容', true))
+
+    await store.greetSelectedJob()
+    await store.exportGreetingLogs()
+
+    expect(createObjectURL).toHaveBeenCalledOnce()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:boss-greeting-records')
+    expect(exportedBlob.current?.type).toBe('text/csv;charset=utf-8')
+    const csv = await exportedBlob.current?.text()
+    expect(csv).toContain('"时间","状态"')
+    expect(csv).toContain('打招呼')
+    expect(csv).toContain('AI 产品经理')
+    expect(csv).toContain('已后台打招呼，并已发送自定义内容')
   })
 })
 

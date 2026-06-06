@@ -29,6 +29,7 @@
   border: 1px solid #d8dee4;
   border-radius: 8px;
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
+  will-change: transform;
 }
 
 .brs-header {
@@ -39,6 +40,8 @@
   padding: 16px 18px 14px;
   background: #ffffff;
   border-bottom: 1px solid #e5e7eb;
+  cursor: move;
+  user-select: none;
 }
 
 .brs-header-actions {
