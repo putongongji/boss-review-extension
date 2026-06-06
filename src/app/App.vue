@@ -11,7 +11,7 @@
         <button class="brs-icon-button" type="button" aria-label="隐藏助手" title="隐藏助手" @click="hidden = true">
           <PanelRightCloseIcon aria-hidden="true" :size="15" />
         </button>
-        <button class="brs-icon-button" type="button" aria-label="关闭助手" title="关闭助手" @click="closed = true">
+        <button class="brs-icon-button" type="button" aria-label="停用本页助手" title="停用本页助手" @click="closed = true">
           <XIcon aria-hidden="true" :size="15" />
         </button>
       </div>
@@ -60,6 +60,16 @@ onUnmounted(() => {
 watch(closed, (isClosed) => {
   if (isClosed) {
     store.stopAutoSync()
+  }
+})
+
+watch(hidden, (isHidden) => {
+  if (closed.value) return
+
+  if (isHidden) {
+    store.stopAutoSync()
+  } else {
+    store.startAutoSync()
   }
 })
 

@@ -4,6 +4,7 @@ import { sleep } from '@/utils/delay'
 export interface BossPageAdapter {
   captureCurrentPage(): Promise<CapturedJob[]>
   enrichJob(job: CapturedJob, options?: { focus?: boolean }): Promise<CapturedJob>
+  hasDetailPanel(): boolean
   hasNextPage(): boolean
   goNextPage(): Promise<boolean>
 }
@@ -158,6 +159,10 @@ export class DomBossAdapter implements BossPageAdapter {
     if (!card) return ''
 
     return extractJobId(this.getJobHref(card)) ?? ''
+  }
+
+  hasDetailPanel(): boolean {
+    return Boolean(this.findDetailPanel())
   }
 
   hasNextPage(): boolean {

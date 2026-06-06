@@ -62,6 +62,32 @@ describe('App', () => {
     expect(rows[0].attributes('aria-current')).toBe('true')
     expect(rows[1].attributes('aria-current')).toBeUndefined()
   })
+
+  it('stops page listeners while hidden and restarts after restore', async () => {
+    mocks.ExtensionStorage.mockImplementation(() => ({
+      getSettings: vi.fn().mockResolvedValue(DEFAULT_SETTINGS),
+      getResumeMaterial: vi.fn().mockResolvedValue(''),
+      getReviewJobs: vi.fn().mockResolvedValue([]),
+      saveSettings: vi.fn(),
+      saveResumeMaterial: vi.fn(),
+      saveReviewJobs: vi.fn(),
+    }))
+    const pinia = createPinia()
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia],
+      },
+    })
+    const store = useReviewStore()
+    const stopAutoSync = vi.spyOn(store, 'stopAutoSync')
+    const startAutoSync = vi.spyOn(store, 'startAutoSync')
+
+    await wrapper.find('button[aria-label="隐藏助手"]').trigger('click')
+    expect(stopAutoSync).toHaveBeenCalledOnce()
+
+    await wrapper.find('.brs-restore-button').trigger('click')
+    expect(startAutoSync).toHaveBeenCalledOnce()
+  })
 })
 
 function createReviewJob(jobId: string): ReviewJob {

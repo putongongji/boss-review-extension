@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   enrichJob: vi.fn(),
   greetJob: vi.fn(),
   getJobIdFromElement: vi.fn(),
+  hasDetailPanel: vi.fn(),
   DomBossAdapter: vi.fn(),
 }))
 
@@ -25,8 +26,10 @@ describe('reviewStore', () => {
       enrichJob: mocks.enrichJob,
       greetJob: mocks.greetJob,
       getJobIdFromElement: mocks.getJobIdFromElement,
+      hasDetailPanel: mocks.hasDetailPanel,
     }))
     mocks.captureCurrentPage.mockResolvedValue([])
+    mocks.hasDetailPanel.mockReturnValue(false)
     mocks.enrichJob.mockImplementation(async (job) => ({ ...job, jdText: '补全后的 JD' }))
     mocks.greetJob.mockResolvedValue(createGreetOutcome('已后台打招呼，使用 Boss 默认招呼语'))
     setActivePinia(createPinia())
@@ -34,6 +37,7 @@ describe('reviewStore', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it('adds captured jobs and selects first job', () => {
@@ -135,6 +139,29 @@ describe('reviewStore', () => {
 
     expect(store.selectedJobId).toBe('job-2')
     expect(mocks.enrichJob).not.toHaveBeenCalled()
+    target.remove()
+  })
+
+  it('auto fetches detail from page clicks only when a detail panel is present', async () => {
+    vi.useFakeTimers()
+    const store = useReviewStore()
+    const target = document.createElement('button')
+    document.body.append(target)
+    const job = createReviewJob('job-2')
+    store.setJobs([createReviewJob('job-1'), job])
+    mocks.getJobIdFromElement.mockReturnValue('job-2')
+    mocks.hasDetailPanel.mockReturnValue(true)
+    mocks.enrichJob.mockResolvedValue({ ...job, jdText: '列表页右侧 JD' })
+
+    store.startAutoSync()
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(150)
+    store.stopAutoSync()
+
+    expect(store.selectedJobId).toBe('job-2')
+    expect(mocks.enrichJob).toHaveBeenCalledWith(job, { focus: true })
+    expect(store.selectedJob?.jdText).toBe('列表页右侧 JD')
     target.remove()
   })
 
