@@ -254,7 +254,12 @@ export class DomBossAdapter implements BossPageAdapter {
   }
 
   private async focusJobDetail(job: CapturedJob): Promise<void> {
-    if (this.extractDetailJobId(this.findDetailPanel() ?? this.doc.body) === job.jobId) {
+    const detailPanel = this.findDetailPanel()
+    if (!detailPanel) {
+      throw new Error('当前页面没有岗位详情面板，请进入 Boss 职位列表页后再读取 JD')
+    }
+
+    if (this.extractDetailJobId(detailPanel) === job.jobId) {
       return
     }
 

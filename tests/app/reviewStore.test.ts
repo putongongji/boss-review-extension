@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   captureCurrentPage: vi.fn(),
   enrichJob: vi.fn(),
   greetJob: vi.fn(),
+  getJobIdFromElement: vi.fn(),
   DomBossAdapter: vi.fn(),
 }))
 
@@ -23,7 +24,9 @@ describe('reviewStore', () => {
       captureCurrentPage: mocks.captureCurrentPage,
       enrichJob: mocks.enrichJob,
       greetJob: mocks.greetJob,
+      getJobIdFromElement: mocks.getJobIdFromElement,
     }))
+    mocks.captureCurrentPage.mockResolvedValue([])
     mocks.enrichJob.mockImplementation(async (job) => ({ ...job, jdText: '补全后的 JD' }))
     mocks.greetJob.mockResolvedValue(createGreetOutcome('已后台打招呼，使用 Boss 默认招呼语'))
     setActivePinia(createPinia())
@@ -116,6 +119,23 @@ describe('reviewStore', () => {
     store.locationFilter = '杭州西湖'
 
     expect(store.filteredJobs.map((job) => job.jobId)).toEqual(['job-1'])
+  })
+
+  it('syncs selected job from page clicks without fetching detail', async () => {
+    const store = useReviewStore()
+    const target = document.createElement('button')
+    document.body.append(target)
+    store.setJobs([createReviewJob('job-1'), createReviewJob('job-2')])
+    mocks.getJobIdFromElement.mockReturnValue('job-2')
+
+    store.startAutoSync()
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await Promise.resolve()
+    store.stopAutoSync()
+
+    expect(store.selectedJobId).toBe('job-2')
+    expect(mocks.enrichJob).not.toHaveBeenCalled()
+    target.remove()
   })
 
   it('greets selected job with optional custom message', async () => {

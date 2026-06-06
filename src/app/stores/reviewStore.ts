@@ -136,9 +136,6 @@ export const useReviewStore = defineStore('review', () => {
     if (!jobId || !jobs.value.some((job) => job.jobId === jobId)) return
 
     selectedJobId.value = jobId
-    window.setTimeout(() => {
-      void fetchSelectedDetail()
-    }, 150)
   }
 
   async function fetchSelectedDetail(): Promise<void> {

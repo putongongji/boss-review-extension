@@ -358,4 +358,20 @@ describe('DomBossAdapter', () => {
     // During initial capture, recruiterName is raw from DOM
     expect(jobs[0].recruiterName).toBe('在线李经理')
   })
+
+  it('does not click job links when no detail panel exists', async () => {
+    document.body.innerHTML = `
+      <a class="job-card-wrapper" href="/job_detail/job-home.html?securityId=sec-home&lid=lid-home">
+        <span class="job-name">首页岗位</span>
+        <span class="company-name">示例科技</span>
+      </a>
+    `
+    const link = document.querySelector<HTMLAnchorElement>('.job-card-wrapper')
+    const clickSpy = vi.spyOn(link!, 'click')
+    const adapter = new DomBossAdapter(document)
+    const [captured] = await adapter.captureCurrentPage()
+
+    await expect(adapter.enrichJob(captured, { focus: true })).rejects.toThrow('没有岗位详情面板')
+    expect(clickSpy).not.toHaveBeenCalled()
+  })
 })
