@@ -107,7 +107,11 @@ export const useReviewStore = defineStore('review', () => {
   }
 
   function updateSelected(patch: Partial<ReviewJob>): void {
-    jobs.value = jobs.value.map((job) => (job.jobId === selectedJobId.value ? { ...job, ...patch } : job))
+    updateJob(selectedJobId.value, patch)
+  }
+
+  function updateJob(jobId: string, patch: Partial<ReviewJob>): void {
+    jobs.value = jobs.value.map((job) => (job.jobId === jobId ? { ...job, ...patch } : job))
   }
 
   async function syncSelectionFromPageClick(event: MouseEvent): Promise<void> {
@@ -127,7 +131,7 @@ export const useReviewStore = defineStore('review', () => {
     const job = selectedJob.value
     if (!job) return
 
-    updateSelected({ status: 'enriching', statusMessage: '读取详情中' })
+    updateJob(job.jobId, { status: 'enriching', statusMessage: '读取详情中' })
     try {
       const adapter = new DomBossAdapter(document)
       const enriched = await adapter.enrichJob(job, { focus: true })
@@ -135,7 +139,7 @@ export const useReviewStore = defineStore('review', () => {
         item.jobId === job.jobId ? { ...toReviewJob(enriched), status: 'drafted', statusMessage: '已读取 JD' } : item,
       )
     } catch (error) {
-      updateSelected({
+      updateJob(job.jobId, {
         status: 'failed',
         statusMessage: error instanceof Error ? error.message : '详情读取失败',
       })
@@ -146,7 +150,7 @@ export const useReviewStore = defineStore('review', () => {
     const job = selectedJob.value
     if (!job) return
 
-    updateSelected({ status: 'enriching', statusMessage: '打招呼中' })
+    updateJob(job.jobId, { status: 'enriching', statusMessage: '打招呼中' })
     try {
       const adapter = new DomBossAdapter(document)
       const outcome = await adapter.greetJob(job, {
@@ -155,14 +159,14 @@ export const useReviewStore = defineStore('review', () => {
       })
       const log = createGreetingLog(job, outcome)
       await storage.appendGreetingLog(log)
-      updateSelected({
+      updateJob(job.jobId, {
         status: 'sent',
         statusMessage: outcome.resultMessage,
         greetedAt: log.createdAt,
         greetingRecordId: log.id,
       })
     } catch (error) {
-      updateSelected({
+      updateJob(job.jobId, {
         status: 'failed',
         statusMessage: error instanceof Error ? error.message : '打招呼失败',
       })

@@ -118,6 +118,29 @@ describe('reviewStore', () => {
     expect(store.selectedJob?.status).toBe('sent')
     expect(store.selectedJob?.statusMessage).toBe('已后台打招呼，并已发送自定义内容')
   })
+
+  it('keeps greeting result on the job that started the request after selection changes', async () => {
+    const store = useReviewStore()
+    let resolveGreeting: (value: ReturnType<typeof createGreetOutcome>) => void = () => {}
+    const greetingPromise = new Promise<ReturnType<typeof createGreetOutcome>>((resolve) => {
+      resolveGreeting = resolve
+    })
+    mocks.greetJob.mockReturnValue(greetingPromise)
+    store.setJobs([createReviewJob('job-1'), createReviewJob('job-2')])
+
+    const task = store.greetSelectedJob()
+    await Promise.resolve()
+    await store.selectJob('job-2')
+    resolveGreeting(createGreetOutcome('A 岗位打招呼成功'))
+    await task
+
+    const firstJob = store.jobs.find((job) => job.jobId === 'job-1')
+    const secondJob = store.jobs.find((job) => job.jobId === 'job-2')
+    expect(firstJob?.status).toBe('sent')
+    expect(firstJob?.statusMessage).toBe('A 岗位打招呼成功')
+    expect(secondJob?.status).not.toBe('sent')
+    expect(secondJob?.statusMessage).toBe('已读取 JD')
+  })
 })
 
 function createGreetOutcome(resultMessage: string, customGreetingSent = false) {
