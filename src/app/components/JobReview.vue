@@ -62,19 +62,32 @@
 
         <div class="brs-review-block">
           <h3>打招呼</h3>
-          <label class="brs-toggle-row">
-            <input v-model="store.customGreetingEnabled" type="checkbox" />
-            <span>默认打招呼后，延迟发送自定义内容</span>
-          </label>
-          <label class="brs-field">
-            <span>自定义内容</span>
-            <textarea v-model="store.greetingText" rows="3" placeholder="关闭开关时不发送；打开后会在默认打招呼成功后延迟发送。" />
-          </label>
-          <div class="brs-review-actions">
-            <button class="brs-button brs-button-primary" type="button" @click="store.greetSelectedJob">
-              立即沟通
-            </button>
-          </div>
+          <template v-if="store.selectedJob.status === 'sent'">
+            <div class="brs-result-block">
+              <strong>已打招呼 ✓</strong>
+              <p>{{ store.selectedJob.statusMessage }}</p>
+            </div>
+          </template>
+          <template v-else>
+            <label class="brs-toggle-row">
+              <input v-model="store.customGreetingEnabled" type="checkbox" :disabled="store.selectedJob.status === 'enriching'" />
+              <span>默认打招呼后，延迟发送自定义内容</span>
+            </label>
+            <label class="brs-field">
+              <span>自定义内容</span>
+              <textarea v-model="store.greetingText" rows="3" placeholder="关闭开关时不发送；打开后会在默认打招呼成功后延迟发送。" :disabled="store.selectedJob.status === 'enriching'" />
+            </label>
+            <div class="brs-review-actions">
+              <button
+                class="brs-button brs-button-primary"
+                type="button"
+                :disabled="store.selectedJob.status === 'enriching' || !store.pluginEnabled"
+                @click="store.greetSelectedJob"
+              >
+                {{ store.selectedJob.status === 'enriching' ? '打招呼中...' : '立即沟通' }}
+              </button>
+            </div>
+          </template>
         </div>
       </div>
     </template>

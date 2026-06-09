@@ -246,6 +246,102 @@ describe('reviewStore', () => {
     expect(csv).toContain('AI 产品经理')
     expect(csv).toContain('已后台打招呼，并已发送自定义内容')
   })
+
+  it('marks greeted job IDs as sent on rescan', async () => {
+    const store = useReviewStore()
+    // First greet a job manually to populate storage
+    store.setJobs([createReviewJob('job-1')])
+    mocks.greetJob.mockResolvedValue(createGreetOutcome('打招呼成功'))
+    await store.greetSelectedJob()
+
+    // Rescan with the same job — should be marked 'sent'
+    const captured = createCapturedJob('job-1')
+    mocks.captureCurrentPage.mockResolvedValue([captured])
+    await store.scanCurrentPage()
+
+    expect(store.greetedJobIds.has('job-1')).toBe(true)
+    expect(store.jobs[0].status).toBe('sent')
+    expect(store.jobs[0].statusMessage).toContain('打招呼成功')
+  })
+
+  it('persists failed greeting records so they are not retried', async () => {
+    const store = useReviewStore()
+    store.setJobs([createReviewJob('job-1')])
+    mocks.greetJob.mockRejectedValue(new Error('缺少 securityId'))
+
+    await store.greetSelectedJob()
+
+    // Failed jobs should also be in greetedJobIds (to avoid infinite retry)
+    expect(store.greetedJobIds.has('job-1')).toBe(true)
+    expect(store.selectedJob?.status).toBe('failed')
+    expect(store.selectedJob?.statusMessage).toBe('缺少 securityId')
+  })
+
+  it('starts auto greet and processes drafted jobs', async () => {
+    vi.useFakeTimers()
+    const store = useReviewStore()
+    const job1 = { ...createReviewJob('job-1'), jdText: 'mock', status: 'drafted' as const, statusMessage: '已读取 JD' }
+    const job2 = { ...createReviewJob('job-2'), jdText: 'mock', status: 'drafted' as const, statusMessage: '已读取 JD' }
+    store.setJobs([job1, job2, { ...createReviewJob('job-3'), status: 'sent' as const, statusMessage: '已打招呼' }])
+
+    mocks.greetJob.mockResolvedValue(createGreetOutcome('打招呼成功'))
+
+    const task = store.startAutoGreet()
+
+    // Process all timers to let the full auto-greet complete (including delays)
+    await vi.runAllTimersAsync()
+    await task
+
+    // Both drafted jobs should be greeted (sent job skipped)
+    expect(mocks.greetJob).toHaveBeenCalledTimes(2)
+    expect(store.autoGreeting).toBe(false)
+    expect(store.autoGreetProgress).toContain('完成')
+    vi.useRealTimers()
+  })
+
+  it('sets autoGreeting and stops via stopAutoGreet', async () => {
+    vi.useFakeTimers()
+    const store = useReviewStore()
+    const job = { ...createReviewJob('job-1'), jdText: 'mock', status: 'drafted' as const, statusMessage: '已读取 JD' }
+    store.setJobs([job])
+    mocks.greetJob.mockResolvedValue(createGreetOutcome('打招呼成功'))
+
+    expect(store.autoGreeting).toBe(false)
+
+    const task = store.startAutoGreet()
+    expect(store.autoGreeting).toBe(true)
+
+    await vi.runAllTimersAsync()
+    await task
+
+    // After completion, autoGreeting should be false again
+    expect(store.autoGreeting).toBe(false)
+    expect(store.autoGreetProgress).toContain('完成')
+    vi.useRealTimers()
+  })
+
+  it('skips already greeted jobs in auto greet', async () => {
+    vi.useFakeTimers()
+    const store = useReviewStore()
+    store.setJobs([
+      { ...createReviewJob('job-1'), status: 'sent' as const, statusMessage: '已打招呼' },
+      { ...createReviewJob('job-2'), status: 'drafted' as const, statusMessage: '已读取 JD' },
+    ])
+    mocks.greetJob.mockResolvedValue(createGreetOutcome('打招呼成功'))
+
+    const task = store.startAutoGreet()
+    await vi.advanceTimersByTimeAsync(100)
+    await Promise.resolve()
+
+    // Only job-2 should be greeted (job-1 is already sent)
+    expect(mocks.greetJob).toHaveBeenCalledTimes(1)
+    const greetedJob = mocks.greetJob.mock.calls[0][0]
+    expect(greetedJob.jobId).toBe('job-2')
+
+    await vi.advanceTimersByTimeAsync(3100)
+    await task
+    vi.useRealTimers()
+  })
 })
 
 function createGreetOutcome(resultMessage: string, customGreetingSent = false) {

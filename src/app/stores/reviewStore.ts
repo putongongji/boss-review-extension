@@ -32,6 +32,13 @@ export const useReviewStore = defineStore('review', () => {
   const titleFilter = ref('')
   const locationFilter = ref('')
   const sessionGreetingRecords = ref<SessionGreetingRecord[]>([])
+  const autoGreeting = ref(false)
+  const autoGreetStopRequested = ref(false)
+  const autoGreetProgress = ref('')
+  const greetedJobIds = ref<Set<string>>(new Set())
+  const pluginEnabled = ref(true)
+  const showHistory = ref(false)
+  const greetingLogs = ref<GreetingLogEntry[]>([])
   let observer: MutationObserver | null = null
   let pageClickListener: ((event: MouseEvent) => void) | null = null
   let syncTimer: number | undefined
@@ -60,6 +67,7 @@ export const useReviewStore = defineStore('review', () => {
   }
 
   async function scanCurrentPage(): Promise<void> {
+    if (!pluginEnabled.value) return
     scanning.value = true
     try {
       const adapter = new DomBossAdapter(document)
@@ -67,8 +75,13 @@ export const useReviewStore = defineStore('review', () => {
       const signature = createListSignature(captured)
       if (signature !== lastSignature) {
         lastSignature = signature
+        const ids = await storage.getGreetedJobIds()
+        greetedJobIds.value = ids
         const greetedLogs = await storage.getGreetingLogs()
-        setJobs(captured.map((job) => toReviewJob(job, greetedLogs.find((log) => log.job.jobId === job.jobId))), selectedJobId.value)
+        setJobs(
+          captured.map((job) => toReviewJob(job, greetedLogs.find((log) => log.job.jobId === job.jobId), ids)),
+          selectedJobId.value,
+        )
       }
       syncMessage.value = captured.length > 0 ? `已同步 ${captured.length} 个岗位` : '当前页没有识别到岗位'
     } finally {
@@ -144,6 +157,7 @@ export const useReviewStore = defineStore('review', () => {
   }
 
   async function fetchSelectedDetail(): Promise<void> {
+    if (!pluginEnabled.value) return
     const job = selectedJob.value
     if (!job) return
 
@@ -164,6 +178,7 @@ export const useReviewStore = defineStore('review', () => {
   }
 
   async function greetSelectedJob(): Promise<void> {
+    if (!pluginEnabled.value) return
     const job = selectedJob.value
     if (!job) return
 
@@ -175,6 +190,7 @@ export const useReviewStore = defineStore('review', () => {
         sendCustomMessage: customGreetingEnabled.value,
       })
       const log = createGreetingLog(job, outcome)
+      const now = Date.now()
       sessionGreetingRecords.value.unshift(createSessionGreetingRecord(job, '成功', {
         defaultGreetingContent: outcome.defaultGreetingContent,
         customGreetingEnabled: outcome.customGreetingEnabled,
@@ -184,6 +200,17 @@ export const useReviewStore = defineStore('review', () => {
         resultMessage: outcome.resultMessage,
       }))
       await storage.appendGreetingLog(log)
+      await storage.markJobGreeted({
+        jobId: job.jobId,
+        greetedAt: now,
+        success: true,
+        customGreetingSent: outcome.customGreetingSent,
+        error: outcome.customGreetingError,
+        resultMessage: outcome.resultMessage,
+      })
+      const nextIds = new Set(greetedJobIds.value)
+      nextIds.add(job.jobId)
+      greetedJobIds.value = nextIds
       updateJob(job.jobId, {
         status: 'sent',
         statusMessage: outcome.resultMessage,
@@ -200,11 +227,139 @@ export const useReviewStore = defineStore('review', () => {
         customGreetingError: message,
         resultMessage: message,
       }))
+      await storage.markJobGreeted({
+        jobId: job.jobId,
+        greetedAt: Date.now(),
+        success: false,
+        customGreetingSent: false,
+        error: message,
+        resultMessage: message,
+      })
+      const nextIds = new Set(greetedJobIds.value)
+      nextIds.add(job.jobId)
+      greetedJobIds.value = nextIds
       updateJob(job.jobId, {
         status: 'failed',
         statusMessage: message,
       })
     }
+  }
+
+  function randomGreetDelayMs(): number {
+    return 3000 + Math.random() * 4000
+  }
+
+  async function startAutoGreet(): Promise<void> {
+    if (!pluginEnabled.value || autoGreeting.value) return
+    autoGreeting.value = true
+    autoGreetStopRequested.value = false
+
+    try {
+      // Reload greeted IDs from storage to get latest state
+      const ids = await storage.getGreetedJobIds()
+      greetedJobIds.value = ids
+
+      // Get eligible jobs: drafted, not already greeted
+      const eligible = filteredJobs.value.filter(
+        (job) => !ids.has(job.jobId) && (job.status === 'drafted' || job.status === 'captured'),
+      )
+      if (eligible.length === 0) {
+        autoGreetProgress.value = '没有待打招呼的岗位'
+        return
+      }
+
+      // Check daily limit
+      const todayCount = await storage.getTodayGreetedCount()
+      const settings = await storage.getSettings()
+      const remaining = settings.dailySendLimit - todayCount
+      if (remaining <= 0) {
+        autoGreetProgress.value = `今日已达上限 (${settings.dailySendLimit})`
+        return
+      }
+
+      const toGreet = eligible.slice(0, remaining)
+      let succeeded = 0
+      let failed = 0
+
+      for (let i = 0; i < toGreet.length; i++) {
+        if (autoGreetStopRequested.value) {
+          autoGreetProgress.value = `已停止 (完成 ${succeeded + failed}/${toGreet.length})`
+          break
+        }
+
+        const job = toGreet[i]
+        autoGreetProgress.value = `正在打招呼 ${i + 1}/${toGreet.length}：${job.title}`
+
+        // Select and enrich if needed
+        selectedJobId.value = job.jobId
+        if (!job.jdText) {
+          try {
+            await fetchSelectedDetail()
+          } catch {
+            // Detail fetch failed, skip this job
+            failed++
+            updateJob(job.jobId, { status: 'failed', statusMessage: '详情读取失败' })
+            continue
+          }
+        }
+
+        // Check again after enrichment — the job ref might have updated
+        const currentJob = jobs.value.find((j) => j.jobId === job.jobId)
+        if (!currentJob || currentJob.status === 'failed') {
+          failed++
+          continue
+        }
+
+        // Send greeting
+        await greetSelectedJob()
+
+        // Check result
+        const resultJob = jobs.value.find((j) => j.jobId === job.jobId)
+        if (resultJob?.status === 'sent') {
+          succeeded++
+        } else {
+          failed++
+        }
+
+        // Random delay between greets (skip last)
+        if (i < toGreet.length - 1 && !autoGreetStopRequested.value) {
+          const delay = randomGreetDelayMs()
+          autoGreetProgress.value = `等待 ${(delay / 1000).toFixed(2)} 秒...`
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        }
+      }
+
+      autoGreetProgress.value = `完成：成功 ${succeeded}，失败 ${failed}`
+    } catch (error) {
+      autoGreetProgress.value = `自动打招呼异常：${error instanceof Error ? error.message : '未知错误'}`
+    } finally {
+      autoGreeting.value = false
+    }
+  }
+
+  function stopAutoGreet(): void {
+    autoGreetStopRequested.value = true
+  }
+
+  function togglePlugin(): void {
+    pluginEnabled.value = !pluginEnabled.value
+    if (!pluginEnabled.value) {
+      if (autoGreeting.value) stopAutoGreet()
+      stopAutoSync()
+    } else {
+      startAutoSync()
+    }
+  }
+
+  function toggleHistory(): void {
+    showHistory.value = !showHistory.value
+    if (showHistory.value) {
+      void loadGreetingLogs()
+    }
+  }
+
+  async function loadGreetingLogs(): Promise<void> {
+    greetingLogs.value = await storage.getGreetingLogs()
   }
 
   async function loadJobs(): Promise<void> {
@@ -233,11 +388,14 @@ export const useReviewStore = defineStore('review', () => {
       .join('\n')
   }
 
-  function toReviewJob(job: CapturedJob, greetedLog?: GreetingLogEntry): ReviewJob {
+  function toReviewJob(job: CapturedJob, greetedLog?: GreetingLogEntry, ids?: Set<string>): ReviewJob {
+    const wasGreeted = greetedLog || ids?.has(job.jobId)
     return {
       ...job,
-      status: greetedLog ? 'sent' : job.jdText ? 'drafted' : 'captured',
-      statusMessage: greetedLog?.resultMessage ?? (job.jdText ? '已读取 JD' : '待读取 JD'),
+      status: wasGreeted ? 'sent' : job.jdText ? 'drafted' : 'captured',
+      statusMessage: wasGreeted
+        ? (greetedLog?.resultMessage ?? '已打招呼')
+        : (job.jdText ? '已读取 JD' : '待读取 JD'),
       capturedAt: Date.now(),
       greetedAt: greetedLog?.createdAt,
       greetingRecordId: greetedLog?.id,
@@ -346,6 +504,9 @@ export const useReviewStore = defineStore('review', () => {
     titleFilter,
     locationFilter,
     stats,
+    autoGreeting,
+    autoGreetProgress,
+    greetedJobIds,
     setJobs,
     selectJob,
     fetchSelectedDetail,
@@ -355,6 +516,14 @@ export const useReviewStore = defineStore('review', () => {
     scanCurrentPage,
     startAutoSync,
     stopAutoSync,
+    startAutoGreet,
+    stopAutoGreet,
     updateSelected,
+    pluginEnabled,
+    showHistory,
+    greetingLogs,
+    togglePlugin,
+    toggleHistory,
+    loadGreetingLogs,
   }
 })

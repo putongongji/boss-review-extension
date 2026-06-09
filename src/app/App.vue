@@ -8,6 +8,14 @@
       </div>
       <div class="brs-header-actions">
         <p class="brs-subtitle">当前页自动同步。</p>
+        <button
+          class="brs-icon-button"
+          type="button"
+          :title="store.pluginEnabled ? '停用插件' : '启用插件'"
+          @click="store.togglePlugin"
+        >
+          <span class="brs-power-dot" :class="{ 'is-on': store.pluginEnabled }"></span>
+        </button>
         <button class="brs-icon-button" type="button" aria-label="隐藏助手" title="隐藏助手" @click="hidden = true">
           <PanelRightCloseIcon aria-hidden="true" :size="15" />
         </button>
@@ -17,12 +25,17 @@
       </div>
     </header>
 
-    <main class="brs-panel">
+    <main class="brs-panel" :class="{ 'brs-panel-disabled': !store.pluginEnabled }">
       <ScanControls />
-      <section class="brs-workspace" aria-label="岗位审核工作区">
-        <JobQueue />
-        <JobReview />
-      </section>
+      <template v-if="store.showHistory">
+        <GreetingHistory />
+      </template>
+      <template v-else>
+        <section class="brs-workspace" aria-label="岗位审核工作区">
+          <JobQueue />
+          <JobReview />
+        </section>
+      </template>
     </main>
   </aside>
 </template>
@@ -31,6 +44,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { PanelRightCloseIcon, XIcon } from 'lucide-vue-next'
 
+import GreetingHistory from '@/app/components/GreetingHistory.vue'
 import JobQueue from '@/app/components/JobQueue.vue'
 import JobReview from '@/app/components/JobReview.vue'
 import ScanControls from '@/app/components/ScanControls.vue'

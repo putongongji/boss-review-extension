@@ -19,7 +19,12 @@
         v-for="job in store.filteredJobs"
         :key="job.jobId"
         class="brs-job-row"
-        :class="{ 'is-selected': job.jobId === store.selectedJobId }"
+        :class="{
+          'is-selected': job.jobId === store.selectedJobId,
+          'is-sent': job.status === 'sent',
+          'is-failed': job.status === 'failed',
+          'is-processing': job.status === 'enriching',
+        }"
         type="button"
         :aria-current="job.jobId === store.selectedJobId ? 'true' : undefined"
         @click="store.selectJob(job.jobId)"

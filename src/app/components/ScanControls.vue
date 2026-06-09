@@ -9,13 +9,43 @@
       <button
         class="brs-button brs-button-secondary"
         type="button"
-        :disabled="store.scanning"
+        :disabled="store.scanning || !store.pluginEnabled"
         @click="store.scanCurrentPage"
       >
         刷新
       </button>
+      <button
+        class="brs-button brs-button-secondary"
+        type="button"
+        @click="store.toggleHistory"
+      >
+        {{ store.showHistory ? '返回岗位' : '招呼记录' }}
+      </button>
       <button class="brs-button brs-button-secondary" type="button" @click="store.exportGreetingLogs">
         导出记录
+      </button>
+    </div>
+
+    <div v-if="store.autoGreeting || store.autoGreetProgress" class="brs-auto-greet-bar" role="status">
+      <template v-if="store.autoGreeting">
+        <span class="brs-auto-greet-progress">{{ store.autoGreetProgress }}</span>
+        <button class="brs-button brs-button-danger" type="button" @click="store.stopAutoGreet">
+          停止
+        </button>
+      </template>
+      <template v-else>
+        <span class="brs-auto-greet-result">{{ store.autoGreetProgress }}</span>
+      </template>
+    </div>
+
+    <div v-if="!store.autoGreeting" class="brs-control-actions">
+      <button
+        class="brs-button brs-button-primary"
+        type="button"
+        :disabled="store.scanning || store.filteredJobs.length === 0 || !store.pluginEnabled"
+        @click="store.startAutoGreet"
+      >
+        自动打招呼 ({{ store.filteredJobs.filter(j => j.status !== 'sent' && j.status !== 'failed').length }})
       </button>
     </div>
 

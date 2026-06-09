@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from './defaults'
-import type { GreetingLogEntry, LocalLogEntry, ReviewJob, Settings } from './types'
+import type { GreetedJobRecord, GreetingLogEntry, LocalLogEntry, ReviewJob, Settings } from './types'
 
 type StorageRecord = Record<string, unknown>
 
@@ -16,6 +16,7 @@ const KEYS = {
   logs: 'logs',
   reviewJobs: 'reviewJobs',
   greetingLogs: 'greetingLogs',
+  greetedJobs: 'greetedJobs',
 } as const
 
 const LEGACY_DEFAULT_KEYWORD_EXCLUDES = ['外包', '销售', '电销']
@@ -115,6 +116,31 @@ export class ExtensionStorage {
   async appendGreetingLog(entry: GreetingLogEntry): Promise<void> {
     const logs = await this.getGreetingLogs()
     await this.area.set({ [KEYS.greetingLogs]: [entry, ...logs].slice(0, 1000) })
+  }
+
+  async getGreetedJobs(): Promise<GreetedJobRecord[]> {
+    const data = await this.area.get({ [KEYS.greetedJobs]: [] })
+    return Array.isArray(data[KEYS.greetedJobs]) ? (data[KEYS.greetedJobs] as GreetedJobRecord[]) : []
+  }
+
+  async getGreetedJobIds(): Promise<Set<string>> {
+    const records = await this.getGreetedJobs()
+    return new Set(records.filter((r) => r.success).map((r) => r.jobId))
+  }
+
+  async markJobGreeted(record: GreetedJobRecord): Promise<void> {
+    const records = await this.getGreetedJobs()
+    // Replace existing record for same jobId, or prepend new one
+    const filtered = records.filter((r) => r.jobId !== record.jobId)
+    await this.area.set({ [KEYS.greetedJobs]: [record, ...filtered].slice(0, 2000) })
+  }
+
+  async getTodayGreetedCount(): Promise<number> {
+    const records = await this.getGreetedJobs()
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+    const todayMs = todayStart.getTime()
+    return records.filter((r) => r.success && r.greetedAt >= todayMs).length
   }
 
   private async addToSet(key: string, value: string): Promise<void> {

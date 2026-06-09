@@ -205,6 +205,44 @@
   border-color: #94a3b8;
 }
 
+.brs-button-danger {
+  color: #ffffff;
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.brs-button-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.brs-auto-greet-bar {
+  display: flex;
+  align-items: center;
+  flex: 1 0 100%;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+}
+
+.brs-auto-greet-progress,
+.brs-auto-greet-result {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.brs-auto-greet-progress {
+  color: #1e3a8a;
+}
+
+.brs-auto-greet-result {
+  color: #334155;
+}
+
 .brs-icon-button {
   display: inline-grid;
   width: 32px;
@@ -352,6 +390,37 @@
 .brs-job-row.is-selected {
   border-left: 3px solid #0f766e;
   padding-left: 9px;
+}
+
+.brs-job-row.is-sent {
+  border-left: 3px solid #16a34a;
+  padding-left: 9px;
+}
+
+.brs-job-row.is-sent:hover,
+.brs-job-row.is-sent.is-selected {
+  background: #f0fdf4;
+}
+
+.brs-job-row.is-failed {
+  border-left: 3px solid #dc2626;
+  padding-left: 9px;
+}
+
+.brs-job-row.is-failed:hover,
+.brs-job-row.is-failed.is-selected {
+  background: #fef2f2;
+}
+
+.brs-job-row.is-processing {
+  border-left: 3px solid #f59e0b;
+  padding-left: 9px;
+  animation: brs-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes brs-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .brs-job-row-main,
@@ -682,6 +751,155 @@ button:disabled,
 .brs-icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* Power toggle dot */
+.brs-power-dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #94a3b8;
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+.brs-power-dot.is-on {
+  background: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+}
+
+/* Disabled panel overlay */
+.brs-panel-disabled {
+  opacity: 0.5;
+}
+
+/* Greeting history panel */
+.brs-history {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.brs-history-list {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.brs-history-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  color: #334155;
+  background: #ffffff;
+  border-width: 0 0 1px;
+  border-style: solid;
+  border-color: #eef2f7;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+  letter-spacing: 0;
+  transition: background 120ms ease;
+}
+
+.brs-history-item:hover {
+  background: #f8fafc;
+}
+
+.brs-history-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.brs-history-item-head strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brs-history-pill {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.brs-history-pill.is-success {
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.brs-history-pill.is-failed {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.brs-history-pill.is-default {
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.brs-history-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.brs-history-content,
+.brs-history-error {
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.brs-history-content {
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+}
+
+.brs-history-content h4,
+.brs-history-error h4 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.brs-history-content p,
+.brs-history-error p {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.brs-history-error {
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
 }
 
 @media (max-width: 520px) {

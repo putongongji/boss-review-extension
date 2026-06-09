@@ -101,3 +101,12 @@ export interface GreetOutcome {
   resultMessage: string
   detail?: string
 }
+
+export interface GreetedJobRecord {
+  jobId: string
+  greetedAt: number
+  success: boolean
+  customGreetingSent: boolean
+  error?: string
+  resultMessage: string
+}
