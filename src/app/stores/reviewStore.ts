@@ -42,6 +42,7 @@ export const useReviewStore = defineStore('review', () => {
   const showHistory = ref(false)
   const greetingLogs = ref<GreetingLogEntry[]>([])
   const generatingGreeting = ref(false)
+  const autoGenerateGreeting = ref(false)
   const llmApiKey = ref('')
   const resumeMaterial = ref('')
   const lastGreetingAnalysis = ref<GreetingAnalysis | null>(null)
@@ -187,6 +188,11 @@ export const useReviewStore = defineStore('review', () => {
         }
         return updated
       })
+
+      // Auto-generate greeting if toggle is on and job has JD
+      if (autoGenerateGreeting.value) {
+        await generateGreetingFromJD()
+      }
     } catch (error) {
       updateJob(job.jobId, {
         status: 'failed',
@@ -374,6 +380,11 @@ export const useReviewStore = defineStore('review', () => {
         if (!currentJob || currentJob.status === 'failed') {
           failed++
           continue
+        }
+
+        // Generate greeting per job if auto-generate is on
+        if (autoGenerateGreeting.value) {
+          await generateGreetingFromJD()
         }
 
         // Send greeting
@@ -609,6 +620,7 @@ export const useReviewStore = defineStore('review', () => {
     showHistory,
     greetingLogs,
     generatingGreeting,
+    autoGenerateGreeting,
     llmApiKey,
     togglePlugin,
     toggleHistory,

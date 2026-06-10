@@ -632,6 +632,11 @@
   border-radius: 6px;
 }
 
+.brs-gen-status {
+  color: #0f766e;
+  font-style: italic;
+}
+
 .brs-greeting-analysis {
   display: grid;
   gap: 8px;

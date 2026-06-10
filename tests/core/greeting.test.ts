@@ -31,6 +31,7 @@ describe('greeting generation', () => {
     expect(prompt).toContain('前 20 个字要有钩子')
     expect(prompt).toContain('60–90')
     expect(prompt).toContain('我的背景')
+    expect(prompt).toContain('以"你好"开头')
   })
 
   it('creates a concise rule based greeting without inventing facts', () => {

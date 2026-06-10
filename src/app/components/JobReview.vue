@@ -77,14 +77,19 @@
               <span>自定义内容</span>
               <textarea v-model="store.greetingText" rows="3" placeholder="关闭开关时不发送；打开后会在默认打招呼成功后延迟发送。" :disabled="store.selectedJob.status === 'enriching'" />
             </label>
-            <div class="brs-inline-actions">
+            <label class="brs-toggle-row">
+              <input v-model="store.autoGenerateGreeting" type="checkbox" />
+              <span>智能生成打招呼语</span>
+              <small v-if="store.autoGenerateGreeting && store.generatingGreeting" class="brs-gen-status">生成中...</small>
+            </label>
+            <div v-if="!store.autoGenerateGreeting" class="brs-inline-actions">
               <button
                 class="brs-button brs-button-ghost"
                 type="button"
                 :disabled="!store.selectedJob.jdText || store.generatingGreeting"
                 @click="store.generateGreetingFromJD"
               >
-                {{ store.generatingGreeting ? '生成中...' : '智能生成' }}
+                {{ store.generatingGreeting ? '生成中...' : '手动生成' }}
               </button>
             </div>
             <div v-if="store.lastGreetingAnalysis" class="brs-greeting-analysis">
