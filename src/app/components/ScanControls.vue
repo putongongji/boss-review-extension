@@ -59,6 +59,23 @@
         <input v-model="store.locationFilter" type="search" placeholder="如 杭州 西湖" />
       </label>
     </div>
+
+    <details class="brs-settings">
+      <summary>API 设置</summary>
+      <div class="brs-settings-body">
+        <label class="brs-field">
+          <span>DeepSeek API Key</span>
+          <small>用于智能生成打招呼语</small>
+          <input
+            :value="store.llmApiKey"
+            type="password"
+            placeholder="sk-..."
+            @change="onApiKeyChange"
+          />
+        </label>
+        <p class="brs-settings-note">模型：deepseek-chat（默认）</p>
+      </div>
+    </details>
   </section>
 </template>
 
@@ -66,4 +83,9 @@
 import { useReviewStore } from '@/app/stores/reviewStore'
 
 const store = useReviewStore()
+
+function onApiKeyChange(event: Event): void {
+  const input = event.target as HTMLInputElement
+  void store.saveApiKey(input.value)
+}
 </script>

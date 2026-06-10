@@ -6,19 +6,21 @@ const STRONG_MATCH_KEYWORDS = ['AI', '智能体', 'ToB', 'SaaS', '增长', '数�
 const UNSUPPORTED_CLAIMS = ['前字节', '百人团队', '负责人', '千万级', '上市公司']
 const JD_CAPABILITY_PHRASES = ['AI产品规划', 'AI 应用产品规划', '需求拆解', '跨团队推进', '数据分析']
 
-export function buildGreetingPrompt(job: CapturedJob, resumeMaterial: string): string {
-  return `你是求职打招呼语助手。请只基于简历素材和 JD 生成中文 Boss 直聘打招呼语。
+export function buildGreetingPrompt(job: CapturedJob, _resumeMaterial?: string): string {
+  return `你是一个 Boss 直聘打招呼语助手。根据岗位 JD 生成一段打招呼语，让求职者发送给招聘方。
 
-约束：
-- 80-120 个中文字符，最多 150 个字符。
-- 不编造经历、数字、公司、工具或头衔。
-- 结构：简短问候 + 预览钩子 + 匹配证据 + 低成本下一步。
-- 输出 JSON，字段为 score, scoreLabel, jdSummary, matchedEvidence, risks, greeting, rationale。
+## 输出要求
+- JSON 格式：{ "greeting": "..." }
+- 只输出 JSON，不要多余文字。
 
-简历素材：
-${resumeMaterial}
+## 打招呼语要求（严格遵循）
+1. 开头 20 个字内制造钩子，让招聘方愿意点开。
+2. 第二句证明你和岗位相关（基于 JD 技能/经验），但不要具体写过去公司/项目。
+3. 不夸大身份，不编造经历。
+4. 控制在 60–90 字之间。
+5. 用中文，语气自然，不要模板感。
 
-岗位：
+## 岗位信息
 岗位名：${job.title}
 公司：${job.company}
 薪资：${job.salary ?? ''}

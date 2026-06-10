@@ -42,6 +42,7 @@ export const useReviewStore = defineStore('review', () => {
   const showHistory = ref(false)
   const greetingLogs = ref<GreetingLogEntry[]>([])
   const generatingGreeting = ref(false)
+  const llmApiKey = ref('')
   let observer: MutationObserver | null = null
   let pageClickListener: ((event: MouseEvent) => void) | null = null
   let syncTimer: number | undefined
@@ -416,6 +417,16 @@ export const useReviewStore = defineStore('review', () => {
     greetingLogs.value = await storage.getGreetingLogs()
   }
 
+  async function loadSettings(): Promise<void> {
+    const s = await storage.getSettings()
+    llmApiKey.value = s.llmApiKey
+  }
+
+  async function saveApiKey(key: string): Promise<void> {
+    llmApiKey.value = key
+    await storage.saveSettings({ llmApiKey: key })
+  }
+
   async function loadJobs(): Promise<void> {
     jobs.value = []
     selectedJobId.value = ''
@@ -578,8 +589,11 @@ export const useReviewStore = defineStore('review', () => {
     showHistory,
     greetingLogs,
     generatingGreeting,
+    llmApiKey,
     togglePlugin,
     toggleHistory,
     loadGreetingLogs,
+    loadSettings,
+    saveApiKey,
   }
 })

@@ -63,6 +63,7 @@ const panelStyle = computed(() => ({
 
 onMounted(() => {
   void store.loadJobs()
+  void store.loadSettings()
   store.startAutoSync()
 })
 

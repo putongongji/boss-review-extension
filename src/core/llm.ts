@@ -56,12 +56,12 @@ export async function generateLlmGreeting(
       },
       body: JSON.stringify({
         model: settings.llmModel,
-        temperature: 0.3,
+        temperature: 0.7,
         response_format: { type: 'json_object' },
         messages: [
           {
             role: 'system',
-            content: '你是严谨的求职打招呼语助手。只输出 JSON，不编造简历或 JD 中没有的事实。',
+            content: '你是严谨的打招呼语助手。只输出 JSON，不编造事实。',
           },
           {
             role: 'user',
@@ -82,11 +82,19 @@ export async function generateLlmGreeting(
   const content = data.choices?.[0]?.message?.content
   if (!content) return null
 
-  const parsed = normalizeGreetingResult(JSON.parse(content) as GreetingResult)
-  const validation = validateGreetingResult(parsed, job, resumeMaterial)
-  if (!validation.ok) {
-    throw new Error(validation.reason)
+  const parsed = JSON.parse(content) as { greeting?: string }
+  const greeting = parsed?.greeting
+  if (!greeting || greeting.length < 10) {
+    throw new Error('生成的招呼语不符合要求')
   }
 
-  return parsed
+  return {
+    score: 0,
+    scoreLabel: 'medium',
+    jdSummary: '',
+    matchedEvidence: [],
+    risks: [],
+    greeting,
+    rationale: '',
+  }
 }
