@@ -273,11 +273,15 @@ export const useReviewStore = defineStore('review', () => {
 
       // Try LLM first if configured
       if (settings.llmApiKey && settings.llmModel) {
-        const result = await generateLlmGreeting(job, resumeMaterial, settings)
-        if (result) {
-          greetingText.value = result.greeting
-          customGreetingEnabled.value = true
-          return
+        try {
+          const result = await generateLlmGreeting(job, resumeMaterial, settings)
+          if (result) {
+            greetingText.value = result.greeting
+            customGreetingEnabled.value = true
+            return
+          }
+        } catch (e) {
+          console.warn('[Boss助手] 大模型生成失败，切换到规则生成:', e)
         }
       }
 
