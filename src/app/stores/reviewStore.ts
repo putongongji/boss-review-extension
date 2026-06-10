@@ -4,6 +4,8 @@ import { computed, ref } from 'vue'
 import { ExtensionStorage } from '@/core/storage'
 import type { CapturedJob, GreetingLogEntry, ReviewJob } from '@/core/types'
 import { DomBossAdapter } from '@/page/bossAdapter'
+import { createRuleBasedGreeting } from '@/core/greeting'
+import { generateLlmGreeting } from '@/core/llm'
 
 const AUTO_SYNC_DEBOUNCE_MS = 250
 const ROOT_ID = 'boss-review-sender-root'
@@ -39,6 +41,7 @@ export const useReviewStore = defineStore('review', () => {
   const pluginEnabled = ref(true)
   const showHistory = ref(false)
   const greetingLogs = ref<GreetingLogEntry[]>([])
+  const generatingGreeting = ref(false)
   let observer: MutationObserver | null = null
   let pageClickListener: ((event: MouseEvent) => void) | null = null
   let syncTimer: number | undefined
@@ -166,9 +169,21 @@ export const useReviewStore = defineStore('review', () => {
       const adapter = new DomBossAdapter(document)
       const enriched = await adapter.enrichJob(job, { focus: true })
       const enrichedJob = { ...enriched, location: job.location || enriched.location }
-      jobs.value = jobs.value.map((item) =>
-        item.jobId === job.jobId ? { ...toReviewJob(enrichedJob), status: 'drafted', statusMessage: '已读取 JD' } : item,
-      )
+      jobs.value = jobs.value.map((item) => {
+        if (item.jobId !== job.jobId) return item
+        const updated = { ...toReviewJob(enrichedJob) }
+        // Preserve greeted state — enrichment must not reset it
+        if (item.status === 'sent') {
+          updated.status = 'sent'
+          updated.statusMessage = item.statusMessage
+          updated.greetedAt = item.greetedAt
+          updated.greetingRecordId = item.greetingRecordId
+        } else {
+          updated.status = 'drafted'
+          updated.statusMessage = '已读取 JD'
+        }
+        return updated
+      })
     } catch (error) {
       updateJob(job.jobId, {
         status: 'failed',
@@ -242,6 +257,41 @@ export const useReviewStore = defineStore('review', () => {
         status: 'failed',
         statusMessage: message,
       })
+    }
+  }
+
+  async function generateGreetingFromJD(): Promise<void> {
+    const job = selectedJob.value
+    if (!job || !job.jdText || generatingGreeting.value) return
+
+    generatingGreeting.value = true
+    try {
+      const [settings, resumeMaterial] = await Promise.all([
+        storage.getSettings(),
+        storage.getResumeMaterial(),
+      ])
+
+      // Try LLM first if configured
+      if (settings.llmApiKey && settings.llmModel) {
+        const result = await generateLlmGreeting(job, resumeMaterial, settings)
+        if (result) {
+          greetingText.value = result.greeting
+          customGreetingEnabled.value = true
+          return
+        }
+      }
+
+      // Fallback to rule-based
+      const result = createRuleBasedGreeting(job, resumeMaterial)
+      greetingText.value = result.greeting
+      customGreetingEnabled.value = true
+    } catch (error) {
+      console.error('[Boss助手] 生成打招呼语失败:', error)
+      updateJob(job.jobId, {
+        statusMessage: error instanceof Error ? error.message : '生成失败',
+      })
+    } finally {
+      generatingGreeting.value = false
     }
   }
 
@@ -511,6 +561,7 @@ export const useReviewStore = defineStore('review', () => {
     selectJob,
     fetchSelectedDetail,
     greetSelectedJob,
+    generateGreetingFromJD,
     exportGreetingLogs,
     loadJobs,
     scanCurrentPage,
@@ -522,6 +573,7 @@ export const useReviewStore = defineStore('review', () => {
     pluginEnabled,
     showHistory,
     greetingLogs,
+    generatingGreeting,
     togglePlugin,
     toggleHistory,
     loadGreetingLogs,
