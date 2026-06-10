@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { ExtensionStorage } from '@/core/storage'
-import type { CapturedJob, GreetingLogEntry, ReviewJob } from '@/core/types'
+import type { CapturedJob, GreetingAnalysis, GreetingLogEntry, GreetingResult, ReviewJob } from '@/core/types'
 import { DomBossAdapter } from '@/page/bossAdapter'
 import { createRuleBasedGreeting } from '@/core/greeting'
 import { generateLlmGreeting } from '@/core/llm'
@@ -43,6 +43,8 @@ export const useReviewStore = defineStore('review', () => {
   const greetingLogs = ref<GreetingLogEntry[]>([])
   const generatingGreeting = ref(false)
   const llmApiKey = ref('')
+  const resumeMaterial = ref('')
+  const lastGreetingAnalysis = ref<GreetingAnalysis | null>(null)
   let observer: MutationObserver | null = null
   let pageClickListener: ((event: MouseEvent) => void) | null = null
   let syncTimer: number | undefined
@@ -266,19 +268,28 @@ export const useReviewStore = defineStore('review', () => {
     if (!job || !job.jdText || generatingGreeting.value) return
 
     generatingGreeting.value = true
+    lastGreetingAnalysis.value = null
     try {
-      const [settings, resumeMaterial] = await Promise.all([
-        storage.getSettings(),
-        storage.getResumeMaterial(),
-      ])
+      const settings = await storage.getSettings()
+      const resume = await storage.getResumeMaterial()
 
       // Try LLM first if configured
       if (settings.llmApiKey && settings.llmModel) {
         try {
-          const result = await generateLlmGreeting(job, resumeMaterial, settings)
+          const result = await generateLlmGreeting(job, resume, settings)
           if (result) {
             greetingText.value = result.greeting
             customGreetingEnabled.value = true
+            // Store full analysis if available
+            const analysis = result as GreetingResult & Partial<GreetingAnalysis>
+            if (analysis.preview20 || analysis.why?.length) {
+              lastGreetingAnalysis.value = {
+                greeting: result.greeting,
+                preview20: analysis.preview20 ?? result.greeting.slice(0, 20),
+                why: analysis.why ?? [],
+                alternatives: analysis.alternatives ?? [],
+              }
+            }
             return
           }
         } catch (e) {
@@ -287,7 +298,7 @@ export const useReviewStore = defineStore('review', () => {
       }
 
       // Fallback to rule-based
-      const result = createRuleBasedGreeting(job, resumeMaterial)
+      const result = createRuleBasedGreeting(job, resume)
       greetingText.value = result.greeting
       customGreetingEnabled.value = true
     } catch (error) {
@@ -418,13 +429,22 @@ export const useReviewStore = defineStore('review', () => {
   }
 
   async function loadSettings(): Promise<void> {
-    const s = await storage.getSettings()
+    const [s, resume] = await Promise.all([
+      storage.getSettings(),
+      storage.getResumeMaterial(),
+    ])
     llmApiKey.value = s.llmApiKey
+    resumeMaterial.value = resume
   }
 
   async function saveApiKey(key: string): Promise<void> {
     llmApiKey.value = key
     await storage.saveSettings({ llmApiKey: key })
+  }
+
+  async function saveResumeMaterial(text: string): Promise<void> {
+    resumeMaterial.value = text
+    await storage.saveResumeMaterial(text)
   }
 
   async function loadJobs(): Promise<void> {
@@ -595,5 +615,8 @@ export const useReviewStore = defineStore('review', () => {
     loadGreetingLogs,
     loadSettings,
     saveApiKey,
+    resumeMaterial,
+    lastGreetingAnalysis,
+    saveResumeMaterial,
   }
 })

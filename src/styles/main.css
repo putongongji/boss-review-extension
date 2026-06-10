@@ -632,6 +632,65 @@
   border-radius: 6px;
 }
 
+.brs-greeting-analysis {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+.brs-analysis-block {
+  padding: 8px 10px;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.brs-analysis-block h4 {
+  margin: 0 0 4px;
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.brs-analysis-block p {
+  margin: 0;
+  color: #1e3a8a;
+}
+
+.brs-analysis-block ul {
+  margin: 0;
+  padding-left: 16px;
+  color: #334155;
+}
+
+.brs-analysis-block li {
+  margin-bottom: 3px;
+}
+
+.brs-analysis-details {
+  font-size: 12px;
+}
+
+.brs-analysis-details summary {
+  cursor: pointer;
+  color: #0f766e;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.brs-analysis-details ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.brs-analysis-details li {
+  margin-bottom: 3px;
+}
+
 .brs-review-actions {
   margin-top: auto;
   padding: 12px;

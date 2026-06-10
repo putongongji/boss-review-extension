@@ -1,5 +1,5 @@
-import { buildGreetingPrompt, normalizeGreetingResult, validateGreetingResult } from './greeting'
-import type { CapturedJob, GreetingResult, Settings } from './types'
+import { buildGreetingPrompt } from './greeting'
+import type { CapturedJob, GreetingAnalysis, GreetingResult, Settings } from './types'
 
 interface ChatCompletionResponse {
   choices?: Array<{
@@ -61,7 +61,7 @@ export async function generateLlmGreeting(
         messages: [
           {
             role: 'system',
-            content: '你是严谨的打招呼语助手。只输出 JSON，不编造事实。',
+            content: '你是严谨的打招呼语助手。只输出 JSON，不编造事实。严格遵循用户指定的 JSON 格式。',
           },
           {
             role: 'user',
@@ -82,19 +82,35 @@ export async function generateLlmGreeting(
   const content = data.choices?.[0]?.message?.content
   if (!content) return null
 
-  const parsed = JSON.parse(content) as { greeting?: string }
-  const greeting = parsed?.greeting
+  // Parse flexible format — accept both simple greeting and full analysis
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(content) as Record<string, unknown>
+  } catch {
+    throw new Error('大模型返回了非 JSON 格式')
+  }
+
+  const greeting = String(parsed.greeting ?? '')
   if (!greeting || greeting.length < 10) {
     throw new Error('生成的招呼语不符合要求')
   }
 
+  // Store the full analysis on the GreetingResult for richer UI display
+  const analysis: GreetingAnalysis = {
+    greeting,
+    preview20: String(parsed.preview20 ?? greeting.slice(0, 20)),
+    why: Array.isArray(parsed.why) ? parsed.why.map(String) : [],
+    alternatives: Array.isArray(parsed.alternatives) ? parsed.alternatives.map(String) : [],
+  }
+
   return {
     score: 0,
-    scoreLabel: 'medium',
+    scoreLabel: 'medium' as const,
     jdSummary: '',
     matchedEvidence: [],
     risks: [],
     greeting,
     rationale: '',
-  }
+    ...analysis,
+  } as GreetingResult & GreetingAnalysis
 }

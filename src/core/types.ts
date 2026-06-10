@@ -53,6 +53,13 @@ export interface GreetingResult {
   rationale: string
 }
 
+export interface GreetingAnalysis {
+  greeting: string
+  preview20: string
+  why: string[]
+  alternatives: string[]
+}
+
 export interface Settings {
   maxPages: number
   maxJobs: number

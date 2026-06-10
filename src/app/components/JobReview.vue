@@ -87,6 +87,24 @@
                 {{ store.generatingGreeting ? '生成中...' : '智能生成' }}
               </button>
             </div>
+            <div v-if="store.lastGreetingAnalysis" class="brs-greeting-analysis">
+              <div class="brs-analysis-block">
+                <h4>前 20 字预览</h4>
+                <p>{{ store.lastGreetingAnalysis.preview20 }}</p>
+              </div>
+              <div v-if="store.lastGreetingAnalysis.why.length" class="brs-analysis-block">
+                <h4>为什么这样写</h4>
+                <ul>
+                  <li v-for="(item, i) in store.lastGreetingAnalysis.why" :key="i">{{ item }}</li>
+                </ul>
+              </div>
+              <details v-if="store.lastGreetingAnalysis.alternatives.length" class="brs-analysis-details">
+                <summary>备选钩子</summary>
+                <ul>
+                  <li v-for="(alt, i) in store.lastGreetingAnalysis.alternatives" :key="i">{{ alt }}</li>
+                </ul>
+              </details>
+            </div>
             <div class="brs-review-actions">
               <button
                 class="brs-button brs-button-primary"

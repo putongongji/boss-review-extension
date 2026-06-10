@@ -74,6 +74,16 @@
           />
         </label>
         <p class="brs-settings-note">模型：deepseek-chat（默认）</p>
+        <label class="brs-field">
+          <span>我的背景（简历）</span>
+          <small>Markdown 格式，用于智能生成打招呼语</small>
+          <textarea
+            :value="store.resumeMaterial"
+            rows="5"
+            placeholder="输入你的工作经历、技能、项目经验等"
+            @change="onResumeChange"
+          />
+        </label>
       </div>
     </details>
   </section>
@@ -87,5 +97,10 @@ const store = useReviewStore()
 function onApiKeyChange(event: Event): void {
   const input = event.target as HTMLInputElement
   void store.saveApiKey(input.value)
+}
+
+function onResumeChange(event: Event): void {
+  const textarea = event.target as HTMLTextAreaElement
+  void store.saveResumeMaterial(textarea.value)
 }
 </script>

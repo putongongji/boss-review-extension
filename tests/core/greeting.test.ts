@@ -22,14 +22,15 @@ const job: CapturedJob = {
 }
 
 describe('greeting generation', () => {
-  it('builds a prompt with JD details and formatting rules', () => {
+  it('builds a prompt with resume, JD details and formatting rules', () => {
     const prompt = buildGreetingPrompt(job, '6年AI产品经验，做过智能体和ToB产品。')
 
-    // Resume material is intentionally excluded from the prompt
-    expect(prompt).not.toContain('6年AI产品经验')
+    expect(prompt).toContain('6年AI产品经验')
     expect(prompt).toContain('AI 产品经理')
     expect(prompt).toContain('负责 AI 应用产品规划')
+    expect(prompt).toContain('前 20 个字要有钩子')
     expect(prompt).toContain('60–90')
+    expect(prompt).toContain('我的背景')
   })
 
   it('creates a concise rule based greeting without inventing facts', () => {
